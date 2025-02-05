@@ -1,4 +1,4 @@
-package com.techatpark.practices;
+package ca.dollareh.vendor;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -62,9 +62,6 @@ public class MultiCraftConnection {
 
             // Wait for the process to complete
             int exitCode = process.waitFor();
-
-
-            
 
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
