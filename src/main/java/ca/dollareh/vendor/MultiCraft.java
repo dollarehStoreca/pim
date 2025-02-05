@@ -43,7 +43,6 @@ public class MultiCraft {
      */
     public List<Category> getCategories(String code) throws URISyntaxException {
 
-        System.out.println("Getting Category " + code);
         String htmlContent = code == null ?
                 multiCraftConnection.getHTML("/en/brand") :
                 multiCraftConnection.getHTML("/en/brand/subbrands?code=" + code);
@@ -60,13 +59,14 @@ public class MultiCraft {
 
         List<Product> products = getProducts(doc);
 
-        for (Element brandsEl : brandsEls) {
+        for (Element brandsAnchorEl : brandsEls) {
 
-            Optional<String> codeOp = new URIBuilder(brandsEl.attr("href"))
+            Optional<String> codeOp = new URIBuilder(brandsAnchorEl.attr("href"))
                     .getQueryParams()
                     .stream()
                     .filter(nameValuePair -> nameValuePair.getName().equals("code"))
-                    .findFirst().map(NameValuePair::getValue);
+                    .findFirst()
+                    .map(NameValuePair::getValue);
 
             if (codeOp.isPresent()) {
                 categories.add(new Category(codeOp.get(), getCategories(codeOp.get()),products));
