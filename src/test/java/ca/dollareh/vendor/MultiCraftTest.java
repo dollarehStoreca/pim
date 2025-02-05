@@ -16,8 +16,7 @@ class MultiCraftTest {
     @Test
     void testGetCategories() throws URISyntaxException {
         MultiCraft multiCraft = new MultiCraft();
-        multiCraft.getCategories("scrapbook~albums")
-                .forEach(System.out::println);
+        System.out.println(multiCraft.getCategory("scrapbook~albums"));
     }
 
 }

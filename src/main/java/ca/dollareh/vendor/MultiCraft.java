@@ -32,7 +32,10 @@ public class MultiCraft {
      * @throws IOException
      */
     public List<Category> getCategories() throws URISyntaxException {
-        return getCategories((String) null);
+        String htmlContent =
+                multiCraftConnection.getHTML("/en/brand");
+        Document doc = Jsoup.parse(htmlContent);
+        return getCategories(doc);
     }
 
     /**
@@ -41,23 +44,22 @@ public class MultiCraft {
      * @return categories
      * @throws IOException
      */
-    public List<Category> getCategories(String code) throws URISyntaxException {
-
-        String htmlContent = code == null ?
-                multiCraftConnection.getHTML("/en/brand") :
+    public Category getCategory(String code) throws URISyntaxException {
+        String htmlContent =
                 multiCraftConnection.getHTML("/en/brand/subbrands?code=" + code);
-
         Document doc = Jsoup.parse(htmlContent);
+        return getCategory(code, doc);
+    }
 
-        return getCategories(doc);
+    private Category getCategory(final String code,
+                                 final Document doc) throws URISyntaxException {
+        return new Category(code, getCategories(doc), getProducts(doc));
     }
 
     private List<Category> getCategories(final Document doc) throws URISyntaxException {
         List<Category> categories = new ArrayList<>();
 
         Elements brandsEls = doc.select("ul.brandsList>li>a");
-
-        List<Product> products = getProducts(doc);
 
         for (Element brandsAnchorEl : brandsEls) {
 
@@ -69,10 +71,9 @@ public class MultiCraft {
                     .map(NameValuePair::getValue);
 
             if (codeOp.isPresent()) {
-                categories.add(new Category(codeOp.get(), getCategories(codeOp.get()),products));
+                categories.add(getCategory(codeOp.get()));
             }
         }
-
         return categories;
     }
 
