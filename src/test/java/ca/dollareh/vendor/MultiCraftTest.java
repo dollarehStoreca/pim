@@ -29,15 +29,20 @@ class MultiCraftTest {
         MultiCraft multiCraft = new MultiCraft();
         Category category = multiCraft.getCategory("scrapbook~albums~refills");
 
-        String[] firsLines ;
+        String[] headers ;
 
         Path filePath = Paths.get("sample/product_template.csv");
         try (Reader reader = Files.newBufferedReader(filePath)) {
             try (CSVReader csvReader = new CSVReader(reader)) {
 
-                firsLines = csvReader.readAll().get(0);
+                headers = csvReader.readAll().get(0);
 
             }
+        }
+
+        for (int i = 0; i < headers.length; i++) {
+            System.out.println( "newLine["+i+"] = \"" + headers[i] + "\";" );
+
         }
 
 
@@ -48,23 +53,36 @@ class MultiCraftTest {
         }
 
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvImporPah.toString()))) {
-            writer.writeAll(Collections.singleton(firsLines));
+            writer.writeAll(Collections.singleton(headers));
 
 
             for (Product product: category.products()) {
 
-                System.out.println(product);
-                String[] newLine = new String[firsLines.length];
+
+                String[] newLine = new String[headers.length];
                 newLine[0] = product.code();
                 newLine[1] = product.title();
                 newLine[2] = product.description();
                 newLine[3] = "Dollareh";
-                newLine[4] = "Paint Brushes";
-                newLine[5] = "Paint Brushes";
+                newLine[4] = category.code();
+                newLine[5] = category.code();
 
+                newLine[6] = "Imported";
                 newLine[7] = "TRUE";
 
-                newLine[newLine.length-1] = "active";
+                newLine[16] = "shopify";
+
+                newLine[18] = "deny";
+
+                newLine[19] = "manual";
+
+                newLine[22] = "TRUE";
+                newLine[23] = "TRUE";
+
+                newLine[25] = product.imageUrls()[0];
+
+                newLine[45] = "g";
+                newLine[50] = "active";
 
                 writer.writeAll(Collections.singleton(newLine));
             }
