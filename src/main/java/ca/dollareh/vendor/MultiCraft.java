@@ -16,6 +16,8 @@ import org.jsoup.select.Elements;
 
 import ca.dollareh.core.model.Category;
 
+import static ca.dollareh.vendor.MultiCraftConnection.BASE_URL;
+
 
 public class MultiCraft {
 
@@ -109,9 +111,38 @@ public class MultiCraft {
 
         Document doc = Jsoup.parse(productHtml);
 
+
+        Elements imageEls = doc.select("#img-previews>li>img");
+
+        String[] imageUrls = new String[imageEls.size()];
+
+
+        for (int i = 0; i < imageEls.size(); i++) {
+            imageUrls[i] = BASE_URL + imageEls.get(i).attr("src").split("\\?")[0];
+        }
+
+
+        Elements fieldEls = doc.select("div.details-brief > .row");
+
+        float price = 0;
+
+        for (Element fieldEl : fieldEls) {
+
+            if(fieldEl.selectFirst(".hdr").text().equals("unit price")) {
+                price = Float.parseFloat(fieldEl
+                        .selectFirst(".vlu")
+                        .text()
+                        .replace("$",""));
+            }
+
+        }
+
+
         return new Product(productCode
                 , doc.selectFirst(".details-desc").text()
                 , doc.selectFirst(".details-blurb").text()
+                , price
+                , imageUrls
         );
     }
 

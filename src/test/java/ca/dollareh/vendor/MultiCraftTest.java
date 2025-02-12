@@ -53,7 +53,19 @@ class MultiCraftTest {
 
             for (Product product: category.products()) {
 
-                String[] newLine = List.of(product.code(), product.title(), product.description()).toArray(new String[0]);
+                System.out.println(product);
+                String[] newLine = new String[firsLines.length];
+                newLine[0] = product.code();
+                newLine[1] = product.title();
+                newLine[2] = product.description();
+                newLine[3] = "Dollareh";
+                newLine[4] = "Paint Brushes";
+                newLine[5] = "Paint Brushes";
+
+                newLine[7] = "TRUE";
+
+                newLine[newLine.length-1] = "active";
+
                 writer.writeAll(Collections.singleton(newLine));
             }
 
