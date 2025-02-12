@@ -90,10 +90,31 @@ public class MultiCraft {
         Elements skusEls = brandDoc.select("#skusCards>li");
 
         for (Element skusEl : skusEls) {
-            products.add(new Product(skusEl.id()));
+            products.add(getProduct(skusEl.selectFirst(".summary-id").text()));
         }
 
         return products;
     }
+
+    /**
+     * Get Product from Multicraft.
+     * @param productCode
+     * @return Product
+     * @throws IOException
+     */
+    public Product getProduct(final String productCode) {
+
+
+        final String productHtml = multiCraftConnection.getHTML("/en/brand/sku?id=" + productCode);
+
+        Document doc = Jsoup.parse(productHtml);
+
+        return new Product(productCode
+                , doc.selectFirst(".details-desc").text()
+                , doc.selectFirst(".details-blurb").text()
+        );
+    }
+
+
 
 }
