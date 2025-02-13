@@ -20,7 +20,7 @@ import ca.dollareh.core.model.Category;
 
 public class MultiCraft {
 
-    public static String BASE_URL = "https://multicraft.ca";
+    private static String BASE_URL = "https://multicraft.ca";
 
     private final String cokkie;
 
@@ -35,10 +35,7 @@ public class MultiCraft {
      * @throws IOException
      */
     public List<Category> getCategories() throws URISyntaxException {
-        String htmlContent =
-                getHTML("/en/brand");
-        Document doc = Jsoup.parse(htmlContent);
-        return getCategories(doc);
+        return getCategories(getHTMLDocument("/en/brand"));
     }
 
     /**
@@ -48,10 +45,7 @@ public class MultiCraft {
      * @throws IOException
      */
     public Category getCategory(String code) throws URISyntaxException {
-        String htmlContent =
-                getHTML("/en/brand/subbrands?code=" + code);
-        Document doc = Jsoup.parse(htmlContent);
-        return getCategory(code, doc);
+        return getCategory(code, getHTMLDocument("/en/brand/subbrands?code=" + code));
     }
 
     private Category getCategory(final String code,
@@ -65,7 +59,6 @@ public class MultiCraft {
         Elements brandsEls = doc.select("ul.brandsList>li>a");
 
         for (Element brandsAnchorEl : brandsEls) {
-
             Optional<String> codeOp = new URIBuilder(brandsAnchorEl.attr("href"))
                     .getQueryParams()
                     .stream()
@@ -79,7 +72,6 @@ public class MultiCraft {
         }
         return categories;
     }
-
 
     /**
      * Get All Products from Multicraft.
@@ -107,37 +99,28 @@ public class MultiCraft {
      */
     public Product getProduct(final String productCode) {
 
-
-        final String productHtml = getHTML("/en/brand/sku?id=" + productCode);
-
-        Document doc = Jsoup.parse(productHtml);
-
+        Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);
 
         Elements imageEls = doc.select("#img-previews>li>img");
 
         String[] imageUrls = new String[imageEls.size()];
 
-
         for (int i = 0; i < imageEls.size(); i++) {
             imageUrls[i] = BASE_URL + imageEls.get(i).attr("src").split("\\?")[0];
         }
-
 
         Elements fieldEls = doc.select("div.details-brief > .row");
 
         float price = 0;
 
         for (Element fieldEl : fieldEls) {
-
             if(fieldEl.selectFirst(".hdr").text().equals("unit price")) {
                 price = Float.parseFloat(fieldEl
                         .selectFirst(".vlu")
                         .text()
                         .replace("$",""));
             }
-
         }
-
 
         return new Product(productCode
                 , doc.selectFirst(".details-desc").text()
@@ -147,8 +130,7 @@ public class MultiCraft {
         );
     }
 
-
-    private String getHTML(final String url) {
+    private Document getHTMLDocument(final String url) {
         // Define the cURL command (Example: Fetching Google's homepage)
         String[] command = {
                 "curl" , BASE_URL + url
@@ -200,9 +182,7 @@ public class MultiCraft {
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
         }
-        return builder.toString();
+        return Jsoup.parse(builder.toString());
     }
-
-
 
 }
