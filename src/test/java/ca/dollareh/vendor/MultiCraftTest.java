@@ -22,7 +22,7 @@ class MultiCraftTest {
     @Test
     void testGetCategories() throws URISyntaxException, IOException, CsvException {
         MultiCraft multiCraft = new MultiCraft();
-        Category category = multiCraft.getCategory("scrapbook~albums~refills");
+        Category category = multiCraft.getCategory(null, "scrapbook~albums~refills");
 
         String[] headers;
 

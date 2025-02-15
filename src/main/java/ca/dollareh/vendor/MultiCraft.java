@@ -35,7 +35,7 @@ public class MultiCraft {
      * @throws IOException
      */
     public List<Category> getCategories() throws URISyntaxException {
-        return getCategories(getHTMLDocument("/en/brand"));
+        return getCategories(null, getHTMLDocument("/en/brand"));
     }
 
     /**
@@ -44,16 +44,26 @@ public class MultiCraft {
      * @return categories
      * @throws IOException
      */
-    public Category getCategory(String code) throws URISyntaxException {
-        return getCategory(code, getHTMLDocument("/en/brand/subbrands?code=" + code));
+    public Category getCategory(final Category parent,String code) throws URISyntaxException {
+        return getCategory(parent, code, getHTMLDocument("/en/brand/subbrands?code=" + code));
     }
 
-    private Category getCategory(final String code,
+    private Category getCategory(final Category parent,
+                                final String code,
                                  final Document doc) throws URISyntaxException {
-        return new Category(code, getCategories(doc), getProducts(doc));
+
+        Category category = new Category(parent, code,new ArrayList<>() , new ArrayList<>());
+
+        List<Category> categories = getCategories(category, doc);
+        category.categories().addAll(categories);
+
+        List<Product> products = getProducts(category, doc);
+        category.products().addAll(products);
+
+        return category;
     }
 
-    private List<Category> getCategories(final Document doc) throws URISyntaxException {
+    private List<Category> getCategories(final Category parent,final Document doc) throws URISyntaxException {
         List<Category> categories = new ArrayList<>();
 
         Elements brandsEls = doc.select("ul.brandsList>li>a");
@@ -67,7 +77,7 @@ public class MultiCraft {
                     .map(NameValuePair::getValue);
 
             if (codeOp.isPresent()) {
-                categories.add(getCategory(codeOp.get()));
+                categories.add(getCategory(parent, codeOp.get()));
             }
         }
         return categories;
@@ -75,17 +85,19 @@ public class MultiCraft {
 
     /**
      * Get All Products from Multicraft.
+     * @param category
      * @param brandDoc
      * @return categories
      * @throws IOException
      */
-    public List<Product> getProducts(Document brandDoc) throws URISyntaxException {
+    public List<Product> getProducts(Category category,
+                                     Document brandDoc) throws URISyntaxException {
         List<Product> products = new ArrayList<>();
 
         Elements skusEls = brandDoc.select("#skusCards>li");
 
         for (Element skusEl : skusEls) {
-            products.add(getProduct(skusEl.selectFirst(".summary-id").text()));
+            products.add(getProduct(category, skusEl.selectFirst(".summary-id").text()));
         }
 
         return products;
@@ -93,11 +105,13 @@ public class MultiCraft {
 
     /**
      * Get Product from Multicraft.
+     * @param category
      * @param productCode
      * @return Product
      * @throws IOException
      */
-    public Product getProduct(final String productCode) {
+    public Product getProduct(final Category category,
+                              final String productCode) {
 
         Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);
 
@@ -122,7 +136,8 @@ public class MultiCraft {
             }
         }
 
-        return new Product(productCode
+        return new Product(category,
+                productCode
                 , doc.selectFirst(".details-desc").text()
                 , doc.selectFirst(".details-blurb").text()
                 , price
