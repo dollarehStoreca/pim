@@ -5,5 +5,15 @@ public record Product(Category category,
                       String title,
                       String description,
                       float price,
+                      float discount,
                       String[] imageUrls) {
+    @Override
+    public String toString() {
+        return code;
+    }
+
+    @Override
+    public int hashCode() {
+        return code.hashCode();
+    }
 }

@@ -16,13 +16,14 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 class MultiCraftTest {
 
     @Test
     void testGetCategories() throws URISyntaxException, IOException, CsvException {
         MultiCraft multiCraft = new MultiCraft();
-        Category category = multiCraft.getCategory(null, "scrapbook~albums~refills");
+        Category category = multiCraft.getCategory(null, "scrapbook~albums");
 
         String[] headers;
 
@@ -35,9 +36,7 @@ class MultiCraftTest {
             }
         }
 
-//        for (int i = 0; i < headers.length; i++) {
-//            System.out.println( "newLine["+i+"] = \"" + headers[i] + "\";" );
-//        }
+
 
 
         Path csvImporPah = Paths.get("data/product_import.csv");
@@ -48,6 +47,15 @@ class MultiCraftTest {
             csvImporPah.toFile().getParentFile().mkdirs();
         }
 
+        createProducts(csvImporPah, headers, category);
+
+        for (Category subCategory : category.categories()) {
+            createProducts(csvImporPah, headers, subCategory);
+        }
+
+    }
+
+    private static void createProducts(Path csvImporPah, String[] headers, Category category) throws IOException {
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvImporPah.toString()))) {
             writer.writeAll(Collections.singleton(headers));
 
@@ -60,7 +68,7 @@ class MultiCraftTest {
                 newLine[2] = product.description();
                 newLine[3] = "Dollareh";
                 newLine[4] = category.code();
-                newLine[5] = category.code();
+                newLine[5] = category.parent().code();
 
                 newLine[6] = "Imported";
                 newLine[7] = "TRUE";

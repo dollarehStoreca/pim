@@ -126,21 +126,32 @@ public class MultiCraft {
         Elements fieldEls = doc.select("div.details-brief > .row");
 
         float price = 0;
+        float discount = 0;
 
         for (Element fieldEl : fieldEls) {
             if(fieldEl.selectFirst(".hdr").text().equals("unit price")) {
-                price = Float.parseFloat(fieldEl
+
+                String priceText = fieldEl
                         .selectFirst(".vlu")
                         .text()
-                        .replace("$",""));
+                        .replace("$","");
+                if(priceText.contains(" ")) {
+                    String[] spli = priceText.split(" ");
+                    price = Float.parseFloat(spli[0]);
+                    discount = Float.parseFloat(spli[1]);
+                } else {
+                    price = Float.parseFloat(priceText);
+                }
+
             }
         }
 
         return new Product(category,
                 productCode
-                , doc.selectFirst(".details-desc").text()
-                , doc.selectFirst(".details-blurb").text()
+                , doc.selectFirst(".details-desc") == null ? null : doc.selectFirst(".details-desc").text()
+                , doc.selectFirst(".details-blurb") == null ? null : doc.selectFirst(".details-blurb").text()
                 , price
+                , discount
                 , imageUrls
         );
     }
