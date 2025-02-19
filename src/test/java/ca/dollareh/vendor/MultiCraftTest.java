@@ -1,35 +1,31 @@
 package ca.dollareh.vendor;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Reader;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.List;
-
 import ca.dollareh.core.model.Category;
 import ca.dollareh.core.model.Product;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
-import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.net.URIBuilder;
-import org.apache.hc.core5.net.URLEncodedUtils;
 import org.junit.jupiter.api.Test;
+
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.Reader;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 class MultiCraftTest {
 
     @Test
     void testGetCategories() throws URISyntaxException, IOException, CsvException {
         MultiCraft multiCraft = new MultiCraft();
-        Category category = multiCraft.getCategory("scrapbook~albums~refills");
+        Category category = multiCraft.getCategory(null, "scrapbook~albums");
 
-        String[] headers ;
+        String[] headers;
 
         Path filePath = Paths.get("sample/product_template.csv");
         try (Reader reader = Files.newBufferedReader(filePath)) {
@@ -40,24 +36,31 @@ class MultiCraftTest {
             }
         }
 
-        for (int i = 0; i < headers.length; i++) {
-            System.out.println( "newLine["+i+"] = \"" + headers[i] + "\";" );
-
-        }
 
 
-        Path csvImporPah = Paths.get("sample/product_import.csv");
+
+        Path csvImporPah = Paths.get("data/product_import.csv");
 
         if (csvImporPah.toFile().exists()) {
             csvImporPah.toFile().delete();
+        } else {
+            csvImporPah.toFile().getParentFile().mkdirs();
         }
 
+        createProducts(csvImporPah, headers, category);
+
+        for (Category subCategory : category.categories()) {
+            createProducts(csvImporPah, headers, subCategory);
+        }
+
+    }
+
+    private static void createProducts(Path csvImporPah, String[] headers, Category category) throws IOException {
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvImporPah.toString()))) {
             writer.writeAll(Collections.singleton(headers));
 
 
-            for (Product product: category.products()) {
-
+            for (Product product : category.products()) {
 
                 String[] newLine = new String[headers.length];
                 newLine[0] = product.code();
@@ -65,7 +68,7 @@ class MultiCraftTest {
                 newLine[2] = product.description();
                 newLine[3] = "Dollareh";
                 newLine[4] = category.code();
-                newLine[5] = category.code();
+                newLine[5] = category.parent().code();
 
                 newLine[6] = "Imported";
                 newLine[7] = "TRUE";
@@ -85,14 +88,16 @@ class MultiCraftTest {
                 newLine[50] = "active";
 
                 writer.writeAll(Collections.singleton(newLine));
+
+                // Cleanup Column Values
+                Arrays.fill(newLine, "");
+
+                for (int i = 1; i < product.imageUrls().length; i++) {
+                    newLine[25] = product.imageUrls()[i];
+                    writer.writeAll(Collections.singleton(newLine));
+                }
             }
-
         }
-
-
-
-
-
     }
 
 }
