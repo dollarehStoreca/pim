@@ -22,7 +22,7 @@ class MultiCraftTest {
     @Test
     void testGetCategories() throws URISyntaxException, IOException, CsvException {
         MultiCraft multiCraft = new MultiCraft();
-        Category category = multiCraft.getCategory(null, "colfact~paints");
+        Category category = multiCraft.getCategory(null, "colfact~paints~watercolor");
 
         String[] headers;
 
@@ -62,7 +62,10 @@ class MultiCraftTest {
                 newLine[2] = product.description();
                 newLine[3] = "Dollareh";
                 newLine[4] = category.code();
-                newLine[5] = category.parent().code();
+                if(category.parent() != null) {
+                    newLine[5] = category.parent().code();
+                }
+
 
                 newLine[6] = "Imported";
                 newLine[7] = "TRUE";
