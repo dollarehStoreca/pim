@@ -7,6 +7,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import ca.dollareh.core.model.Product;
 import org.apache.hc.core5.http.NameValuePair;
@@ -25,7 +26,12 @@ public class MultiCraft {
 
     private final Connection session ;
 
-    public MultiCraft() throws IOException {
+    private final Consumer<Product> productConsumer;
+
+    public MultiCraft(final Consumer<Product> productConsumer) throws IOException {
+
+        this.productConsumer = productConsumer;
+
         session = Jsoup.newSession()
                 .timeout(45 * 1000)
                 .maxBodySize(5 * 1024 * 1024);
@@ -41,6 +47,8 @@ public class MultiCraft {
                 .data("__RequestVerificationToken", code)
                 .post();
     }
+
+
 
     /**
      * Get All Categories from Multicraft.
@@ -66,13 +74,13 @@ public class MultiCraft {
                                 final String code,
                                  final Document doc) throws URISyntaxException, IOException {
 
-        Category category = new Category(parent, code,new ArrayList<>() , new ArrayList<>());
+        Category category = new Category(parent, code,new ArrayList<>());
 
         List<Category> categories = getCategories(category, doc);
         category.categories().addAll(categories);
 
         List<Product> products = getProducts(category, doc);
-        category.products().addAll(products);
+
 
         return category;
     }
@@ -104,14 +112,19 @@ public class MultiCraft {
      * @return categories
      * @throws IOException
      */
-    public List<Product> getProducts(Category category,
+    private List<Product> getProducts(Category category,
                                      Document brandDoc) throws URISyntaxException, IOException {
         List<Product> products = new ArrayList<>();
 
         Elements skusEls = brandDoc.select("#skusCards>li");
 
         for (Element skusEl : skusEls) {
-            products.add(getProduct(category, skusEl.selectFirst(".summary-id").text()));
+
+            Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
+
+            this.productConsumer.accept(product);
+
+            products.add(product);
         }
 
         return products;
@@ -124,7 +137,7 @@ public class MultiCraft {
      * @return Product
      * @throws IOException
      */
-    public Product getProduct(final Category category,
+    private Product getProduct(final Category category,
                               final String productCode) throws IOException {
 
         Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);

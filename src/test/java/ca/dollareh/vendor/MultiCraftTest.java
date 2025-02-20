@@ -22,9 +22,13 @@ class MultiCraftTest {
 
     @Test
     void testGetCategories() throws URISyntaxException, IOException, CsvException {
-        MultiCraft multiCraft = new MultiCraft();
-        Category category = multiCraft.getCategory(null, "colfact~paints~watercolor");
+        Path csvImporPah = Paths.get("data/product_import.csv");
+        downloadProductsCSV(csvImporPah);
+    }
 
+    public void downloadProductsCSV(final Path csvImporPah) throws IOException, CsvException, URISyntaxException {
+
+        // Create Header
         String[] headers;
 
         Path filePath = Paths.get("sample/product_template.csv");
@@ -34,84 +38,83 @@ class MultiCraftTest {
             }
         }
 
-        Path csvImporPah = Paths.get("data/product_import.csv");
-
+        // Delete CSV If Exists
         if (csvImporPah.toFile().exists()) {
             csvImporPah.toFile().delete();
         } else {
             csvImporPah.toFile().getParentFile().mkdirs();
         }
 
-        createProducts(csvImporPah, headers, category);
 
-        for (Category subCategory : category.categories()) {
-            createProducts(csvImporPah, headers, subCategory);
+
+
+        try (CSVWriter writer = new CSVWriter(new FileWriter(csvImporPah.toString()))) {
+
+            MultiCraft multiCraft = new MultiCraft(product -> {
+                // I can perfom steps on product
+                System.out.println(product);
+                writeProduct(writer, headers, product);
+            });
+
+            writer.writeAll(Collections.singleton(headers));
+
+            Category category = multiCraft.getCategory(null, "scrapbook~albums");
+
+            multiCraft.logout();
+
         }
 
-        multiCraft.logout();
+
 
     }
 
-    private static void createProducts(Path csvImporPah, String[] headers, Category category) throws IOException {
-        try (CSVWriter writer = new CSVWriter(new FileWriter(csvImporPah.toString()))) {
-            writer.writeAll(Collections.singleton(headers));
 
+    private static void writeProduct(CSVWriter writer, String[] headers, Product product) {
+        String[] newLine = new String[headers.length];
+        newLine[0] = product.code();
+        newLine[1] = product.title();
+        newLine[2] = product.description();
+        newLine[3] = "Dollareh";
+        newLine[4] = product.category().code();
+        if(product.category().parent() != null) {
+            newLine[5] = product.category().parent().code();
+        }
 
-            for (Product product : category
-                    .products().stream()
-                    .filter(product -> product.code().equals("CF520"))
-                    .collect(Collectors.toSet())) {
+        newLine[6] = "Imported";
+        newLine[7] = "TRUE";
 
-                String[] newLine = new String[headers.length];
+        newLine[16] = "shopify";
+
+        newLine[17] = "" + product.inventryCode();
+
+        newLine[18] = "deny";
+
+        newLine[19] = "manual";
+
+        newLine[20] = "" + product.price();
+
+        newLine[22] = "TRUE";
+        newLine[23] = "TRUE";
+
+        newLine[25] = product.imageUrls()[0];
+
+        newLine[45] = "g";
+        newLine[50] = "active";
+
+        newLine[51] = product.category().code();
+
+        newLine[53] = "" + product.upc();
+
+        writer.writeAll(Collections.singleton(newLine));
+
+        // Cleanup Column Values
+        Arrays.fill(newLine, "");
+
+        if(product.imageUrls().length >= 2 ) {
+            for (int i = 1; i < 2; i++) {
                 newLine[0] = product.code();
-                newLine[1] = product.title();
-                newLine[2] = product.description();
-                newLine[3] = "Dollareh";
-                newLine[4] = category.code();
-                if(category.parent() != null) {
-                    newLine[5] = category.parent().code();
-                }
-
-
-                newLine[6] = "Imported";
-                newLine[7] = "TRUE";
-
-                newLine[16] = "shopify";
-
-                newLine[17] = "" + product.inventryCode();
-
-                newLine[18] = "deny";
-
-                newLine[19] = "manual";
-
-                newLine[20] = "" + product.price();
-
-                newLine[22] = "TRUE";
-                newLine[23] = "TRUE";
-
-                newLine[25] = product.imageUrls()[0];
-
-                newLine[45] = "g";
-                newLine[50] = "active";
-
-                newLine[51] = category.code();
-
-                newLine[53] = "" + product.upc();
-
+                newLine[25] = product.imageUrls()[i];
                 writer.writeAll(Collections.singleton(newLine));
-
-                // Cleanup Column Values
-                Arrays.fill(newLine, "");
-
-                if(product.imageUrls().length >= 2 ) {
-                    for (int i = 1; i < 2; i++) {
-                        newLine[0] = product.code();
-                        newLine[25] = product.imageUrls()[i];
-                        writer.writeAll(Collections.singleton(newLine));
-                    }
-                }
-
-
             }
         }
     }
