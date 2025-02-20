@@ -98,6 +98,7 @@ class MultiCraftTest {
                 Arrays.fill(newLine, "");
 
                 for (int i = 1; i < product.imageUrls().length; i++) {
+                    newLine[0] = product.code();
                     newLine[25] = product.imageUrls()[i];
                     writer.writeAll(Collections.singleton(newLine));
                 }
