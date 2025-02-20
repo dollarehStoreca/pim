@@ -11,6 +11,7 @@ import java.util.Optional;
 import ca.dollareh.core.model.Product;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.URIBuilder;
+import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -22,10 +23,23 @@ public class MultiCraft {
 
     private static String BASE_URL = "https://multicraft.ca";
 
-    private final String cokkie;
+    private final Connection session ;
 
-    public MultiCraft() {
-        cokkie = System.getenv("DH_MULTICRAFT_COKKIE");
+    public MultiCraft() throws IOException {
+        session = Jsoup.newSession()
+                .timeout(45 * 1000)
+                .maxBodySize(5 * 1024 * 1024);
+
+        Document langingPage = session.newRequest("https://multicraft.ca/en")
+                .get();
+
+        String code = langingPage.selectFirst("input[name=\"__RequestVerificationToken\"]").val();
+
+        Document req1 = session.newRequest("https://multicraft.ca/en/user/login")
+                .data("UserName", System.getenv("MULTICRAFT_USER"))
+                .data("Password", System.getenv("MULTICRAFT_PW"))
+                .data("__RequestVerificationToken", code)
+                .post();
     }
 
     /**
@@ -34,7 +48,7 @@ public class MultiCraft {
      * @return categories
      * @throws IOException
      */
-    public List<Category> getCategories() throws URISyntaxException {
+    public List<Category> getCategories() throws URISyntaxException, IOException {
         return getCategories(null, getHTMLDocument("/en/brand"));
     }
 
@@ -44,13 +58,13 @@ public class MultiCraft {
      * @return categories
      * @throws IOException
      */
-    public Category getCategory(final Category parent,String code) throws URISyntaxException {
+    public Category getCategory(final Category parent,String code) throws URISyntaxException, IOException {
         return getCategory(parent, code, getHTMLDocument("/en/brand/subbrands?code=" + code));
     }
 
     private Category getCategory(final Category parent,
                                 final String code,
-                                 final Document doc) throws URISyntaxException {
+                                 final Document doc) throws URISyntaxException, IOException {
 
         Category category = new Category(parent, code,new ArrayList<>() , new ArrayList<>());
 
@@ -63,7 +77,7 @@ public class MultiCraft {
         return category;
     }
 
-    private List<Category> getCategories(final Category parent,final Document doc) throws URISyntaxException {
+    private List<Category> getCategories(final Category parent,final Document doc) throws URISyntaxException, IOException {
         List<Category> categories = new ArrayList<>();
 
         Elements brandsEls = doc.select("ul.brandsList>li>a");
@@ -91,7 +105,7 @@ public class MultiCraft {
      * @throws IOException
      */
     public List<Product> getProducts(Category category,
-                                     Document brandDoc) throws URISyntaxException {
+                                     Document brandDoc) throws URISyntaxException, IOException {
         List<Product> products = new ArrayList<>();
 
         Elements skusEls = brandDoc.select("#skusCards>li");
@@ -111,7 +125,7 @@ public class MultiCraft {
      * @throws IOException
      */
     public Product getProduct(final Category category,
-                              final String productCode) {
+                              final String productCode) throws IOException {
 
         Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);
 
@@ -181,59 +195,12 @@ public class MultiCraft {
         );
     }
 
-    private Document getHTMLDocument(final String url) {
-        // Define the cURL command (Example: Fetching Google's homepage)
-        String[] command = {
-                "curl" , BASE_URL + url
-                ,"--compressed"
-                ,"-H", "User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:127.0) Gecko/20100101 Firefox/127.0"
-                ,"-H", "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
-                ,"-H", "Accept-Language: en-US,en;q=0.5"
-                ,"-H", "Accept-Encoding: gzip, deflate, br, zstd"
-                ,"-H", "Connection: keep-alive"
-                ,"-H", "Cookie: " + cokkie
-                ,"-H", "Upgrade-Insecure-Requests: 1"
-                ,"-H", "Sec-Fetch-Dest: document"
-                ,"-H", "Sec-Fetch-Mode: navigate"
-                ,"-H", "Sec-Fetch-Site: none"
-                ,"-H", "Sec-Fetch-User: ?1"
-                ,"-H", "Priority: u=1"
-        };
-
-        StringBuilder builder = new StringBuilder();
-
-        try {
-            // Start the process
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.redirectErrorStream(true); // Merge stdout and stderr
-
-            Process process = processBuilder.start();
-
-            boolean startAppending = false ;
-
-            // Read the output
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-
-                    if(startAppending) {
-                        builder.append(line);
-                    } else {
-                        if(line.trim().equals("<!DOCTYPE html>")) {
-                            startAppending = true;
-                        }
-                    }
-
-                }
-            }
-
-            // Wait for the process to complete
-            int exitCode = process.waitFor();
-
-        } catch (IOException | InterruptedException e) {
-            e.printStackTrace();
-        }
-        return Jsoup.parse(builder.toString());
+    private Document getHTMLDocument(final String url) throws IOException {
+        return session.newRequest(BASE_URL + url).get();
     }
 
+    public void logout() throws IOException {
+        session.newRequest(BASE_URL + "/en/user/logout")
+                .get();
+    }
 }

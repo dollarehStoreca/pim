@@ -48,6 +48,8 @@ class MultiCraftTest {
             createProducts(csvImporPah, headers, subCategory);
         }
 
+        multiCraft.logout();
+
     }
 
     private static void createProducts(Path csvImporPah, String[] headers, Category category) throws IOException {
