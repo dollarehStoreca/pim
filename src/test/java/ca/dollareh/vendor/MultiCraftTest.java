@@ -76,7 +76,7 @@ class MultiCraftTest {
 
                 newLine[19] = "manual";
 
-                newLine[21] = "" + product.price();
+                newLine[20] = "" + product.price();
 
                 newLine[22] = "TRUE";
                 newLine[23] = "TRUE";
