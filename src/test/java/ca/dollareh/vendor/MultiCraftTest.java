@@ -92,16 +92,24 @@ class MultiCraftTest {
                 newLine[45] = "g";
                 newLine[50] = "active";
 
+                newLine[51] = category.code();
+
+                newLine[53] = "" + product.upc();
+
                 writer.writeAll(Collections.singleton(newLine));
 
                 // Cleanup Column Values
                 Arrays.fill(newLine, "");
 
-                for (int i = 1; i < product.imageUrls().length; i++) {
-                    newLine[0] = product.code();
-                    newLine[25] = product.imageUrls()[i];
-                    writer.writeAll(Collections.singleton(newLine));
+                if(product.imageUrls().length >= 2 ) {
+                    for (int i = 1; i < 2; i++) {
+                        newLine[0] = product.code();
+                        newLine[25] = product.imageUrls()[i];
+                        writer.writeAll(Collections.singleton(newLine));
+                    }
                 }
+
+
             }
         }
     }
