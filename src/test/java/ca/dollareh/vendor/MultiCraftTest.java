@@ -16,6 +16,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.stream.Collectors;
 
 class MultiCraftTest {
 
@@ -54,7 +55,10 @@ class MultiCraftTest {
             writer.writeAll(Collections.singleton(headers));
 
 
-            for (Product product : category.products()) {
+            for (Product product : category
+                    .products().stream()
+                    .filter(product -> product.code().equals("CF520"))
+                    .collect(Collectors.toSet())) {
 
                 String[] newLine = new String[headers.length];
                 newLine[0] = product.code();
@@ -71,6 +75,8 @@ class MultiCraftTest {
                 newLine[7] = "TRUE";
 
                 newLine[16] = "shopify";
+
+                newLine[17] = "" + product.inventryCode();
 
                 newLine[18] = "deny";
 
