@@ -46,8 +46,6 @@ class MultiCraftTest {
         }
 
 
-
-
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvImporPah.toString()))) {
 
             MultiCraft multiCraft = new MultiCraft(product -> {
