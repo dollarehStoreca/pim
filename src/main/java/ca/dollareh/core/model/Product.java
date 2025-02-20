@@ -4,8 +4,8 @@ public record Product(Category category,
                       String code,
                       String title,
                       String description,
-                      float price,
-                      float discount,
+                      Float price,
+                      Float discount,
                       String[] imageUrls) {
     @Override
     public String toString() {
