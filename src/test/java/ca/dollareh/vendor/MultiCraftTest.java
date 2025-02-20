@@ -16,28 +16,22 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 
 class MultiCraftTest {
 
     @Test
     void testGetCategories() throws URISyntaxException, IOException, CsvException {
         MultiCraft multiCraft = new MultiCraft();
-        Category category = multiCraft.getCategory(null, "scrapbook~albums");
+        Category category = multiCraft.getCategory(null, "colfact~paints~watercolor");
 
         String[] headers;
 
         Path filePath = Paths.get("sample/product_template.csv");
         try (Reader reader = Files.newBufferedReader(filePath)) {
             try (CSVReader csvReader = new CSVReader(reader)) {
-
                 headers = csvReader.readAll().get(0);
-
             }
         }
-
-
-
 
         Path csvImporPah = Paths.get("data/product_import.csv");
 
@@ -68,7 +62,10 @@ class MultiCraftTest {
                 newLine[2] = product.description();
                 newLine[3] = "Dollareh";
                 newLine[4] = category.code();
-                newLine[5] = category.parent().code();
+                if(category.parent() != null) {
+                    newLine[5] = category.parent().code();
+                }
+
 
                 newLine[6] = "Imported";
                 newLine[7] = "TRUE";
@@ -78,6 +75,8 @@ class MultiCraftTest {
                 newLine[18] = "deny";
 
                 newLine[19] = "manual";
+
+                newLine[20] = "" + product.price();
 
                 newLine[22] = "TRUE";
                 newLine[23] = "TRUE";

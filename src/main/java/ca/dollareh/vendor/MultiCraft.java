@@ -128,6 +128,10 @@ public class MultiCraft {
         float price = 0;
         float discount = 0;
 
+        Long upc = 0L;
+
+        Integer invertyQty = 0;
+
         for (Element fieldEl : fieldEls) {
             if(fieldEl.selectFirst(".hdr").text().equals("unit price")) {
 
@@ -143,6 +147,25 @@ public class MultiCraft {
                     price = Float.parseFloat(priceText);
                 }
 
+            } else if(fieldEl.selectFirst(".hdr").text().equals("pack")) {
+                String priceText = fieldEl
+                        .selectFirst(".vlu")
+                        .text();
+
+                invertyQty = Integer.parseInt(priceText);
+
+
+
+            }
+            else if(fieldEl.selectFirst(".hdr").text().equals("UPC")) {
+                String priceText = fieldEl
+                        .selectFirst(".vlu")
+                        .text();
+
+                upc = Long.parseLong(priceText);
+
+
+
             }
         }
 
@@ -150,6 +173,8 @@ public class MultiCraft {
                 productCode
                 , doc.selectFirst(".details-desc") == null ? null : doc.selectFirst(".details-desc").text()
                 , doc.selectFirst(".details-blurb") == null ? null : doc.selectFirst(".details-blurb").text()
+                , upc
+                , invertyQty
                 , price
                 , discount
                 , imageUrls
