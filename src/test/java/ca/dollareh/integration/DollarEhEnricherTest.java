@@ -41,25 +41,26 @@ public class DollarEhEnricherTest {
             if (i != 0) {
                 String code = row.getCell(1).getStringCellValue();
                 productMap = new HashMap<>();
-                for (Cell cell : row) {
-                    if (cell.getColumnIndex() == 6) {
-                        productMap.put("title", cell.getStringCellValue());
-                    } else if (cell.getColumnIndex() == 7) {
-                        productMap.put("description", cell.getStringCellValue());
-                    } else if (cell.getColumnIndex() == 9) {
-                        productMap.put("inventryCode", cell.getNumericCellValue());
-                    } else if (cell.getColumnIndex() == 10) {
-                        productMap.put("discount", cell.getNumericCellValue());
-                    } else if (cell.getColumnIndex() == 11) {
-                        productMap.put("price", cell.getNumericCellValue());
-                    }
-                }
+
+                productMap.put("inventryCode", row.getCell(9).getNumericCellValue());
+                productMap.put("discount", row.getCell(10).getNumericCellValue());
+                productMap.put("price", row.getCell(11).getNumericCellValue());
 
 
-                Path jsonPath = Path.of("workspace/MultiCraft/" + code + ".json");
+                StringBuilder builder = new StringBuilder("workspace/MultiCraft/");
 
-                Files.writeString(jsonPath, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(productMap));
+                builder.append(row.getCell(3).getStringCellValue()).append("/");
+                builder.append(row.getCell(4).getStringCellValue()).append("/");
+                builder.append(row.getCell(5).getStringCellValue()).append("/");
 
+                builder.append(code);
+                builder.append(".json");
+
+                Path path = Path.of(builder.toString());
+
+                path.toFile().getParentFile().mkdirs();
+
+                Files.writeString(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(productMap));
             }
             i++;
         }
