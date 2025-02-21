@@ -2,12 +2,16 @@ package ca.dollareh.integration;
 
 import ca.dollareh.ProductSource;
 import ca.dollareh.core.model.Product;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
@@ -52,11 +56,34 @@ public class Shopify {
             csvPath.toFile().getParentFile().mkdirs();
         }
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
+
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvPath.toString()))) {
             writer.writeAll(Collections.singleton(headers));
 
             productSource.forEach(product -> {
-                writeProduct(writer, product);
+
+                Path jsonPath = Path.of("workspace/MultiCraft/" + product.code() + ".json");
+
+                if(jsonPath.toFile().exists()) {
+                    Product product1 = null;
+                    try {
+                        product1 = objectMapper.readValue(jsonPath.toFile(), Product.class);
+                        System.out.println(product1);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    writeProduct(writer, product.merge(product1));
+
+
+                } else {
+                    writeProduct(writer, product);
+                }
+
+
             });
         }
     }
