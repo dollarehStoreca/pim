@@ -1,24 +1,41 @@
 package ca.dollareh.integration;
 
 import ca.dollareh.ProductSource;
-import ca.dollareh.core.model.Category;
 import ca.dollareh.core.model.Product;
-import ca.dollareh.vendor.MultiCraft;
-import com.opencsv.CSVReader;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.Reader;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 
 public class Shopify {
+
+    private static final String[] headers = new String[]{
+            "Handle","Title","Body (HTML)"
+            ,"Vendor","Product Category","Type","Tags"
+            ,"Published","Option1 Name","Option1 Value"
+            ,"Option2 Name","Option2 Value","Option3 Name"
+            ,"Option3 Value","Variant SKU","Variant Grams"
+            ,"Variant Inventory Tracker","Variant Inventory Qty"
+            ,"Variant Inventory Policy","Variant Fulfillment Service"
+            ,"Variant Price","Variant Compare At Price","Variant Requires Shipping"
+            ,"Variant Taxable","Variant Barcode","Image Src","Image Position"
+            ,"Image Alt Text","Gift Card","SEO Title"
+            ,"SEO Description","Google Shopping / Google Product Category"
+            ,"Google Shopping / Gender","Google Shopping / Age Group"
+            ,"Google Shopping / MPN","Google Shopping / AdWords Grouping"
+            ,"Google Shopping / AdWords Labels","Google Shopping / Condition"
+            ,"Google Shopping / Custom Product","Google Shopping / Custom Label 0"
+            ,"Google Shopping / Custom Label 1","Google Shopping / Custom Label 2"
+            ,"Google Shopping / Custom Label 3","Google Shopping / Custom Label 4"
+            ,"Variant Image","Variant Weight Unit","Variant Tax Code"
+            ,"Cost per item","Price / International"
+            ,"Compare At Price / International","Status","Collection"
+            ,"custom.box_quantity","UPC"};
 
     private final ProductSource productSource;
 
@@ -27,15 +44,6 @@ public class Shopify {
     }
 
     void downloadCSV(final Path csvPath) throws IOException, CsvException, URISyntaxException {
-        // Create Header
-        String[] headers;
-
-        Path filePath = Paths.get("sample/product_template.csv");
-        try (Reader reader = Files.newBufferedReader(filePath)) {
-            try (CSVReader csvReader = new CSVReader(reader)) {
-                headers = csvReader.readAll().get(0);
-            }
-        }
 
         // Delete CSV If Exists
         if (csvPath.toFile().exists()) {
@@ -44,23 +52,16 @@ public class Shopify {
             csvPath.toFile().getParentFile().mkdirs();
         }
 
-
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvPath.toString()))) {
-            productSource.forEach(product -> {
-                // I can perfom steps on product
-                System.out.println(product);
-                writeProduct(writer, headers, product);
-            });
-
             writer.writeAll(Collections.singleton(headers));
 
-
-
-
+            productSource.forEach(product -> {
+                writeProduct(writer, product);
+            });
         }
     }
 
-    private static void writeProduct(CSVWriter writer, String[] headers, Product product) {
+    private static void writeProduct(CSVWriter writer, Product product) {
         String[] newLine = new String[headers.length];
         newLine[0] = product.code();
         newLine[1] = product.title();
