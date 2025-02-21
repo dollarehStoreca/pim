@@ -68,16 +68,12 @@ public class Shopify {
                 Path jsonPath = Path.of("workspace/MultiCraft/" + product.code() + ".json");
 
                 if(jsonPath.toFile().exists()) {
-                    Product product1 = null;
                     try {
-                        product1 = objectMapper.readValue(jsonPath.toFile(), Product.class);
-                        System.out.println(product1);
+                        writeProduct(writer, product.merge(objectMapper
+                                .readValue(jsonPath.toFile(), Product.class)));
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-
-                    writeProduct(writer, product.merge(product1));
-
 
                 } else {
                     writeProduct(writer, product);

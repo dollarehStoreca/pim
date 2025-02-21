@@ -30,7 +30,7 @@ public class MultiCraft implements ProductSource {
 
     @Override
     public void forEach(Consumer<Product> productConsumer) throws URISyntaxException, IOException {
-        getCategory(productConsumer, null, "scrapbook~albums");
+        getCategory(productConsumer, null, "scrapbook");
         logout();
     }
 
@@ -120,19 +120,23 @@ public class MultiCraft implements ProductSource {
      */
     private List<Product> getProducts(Consumer<Product> productConsumer,
                                       Category category,
-                                     Document brandDoc) throws URISyntaxException, IOException {
+                                     Document brandDoc) {
         List<Product> products = new ArrayList<>();
 
         Elements skusEls = brandDoc.select("#skusCards>li");
 
-        for (Element skusEl : skusEls) {
-
-            Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
+        skusEls.stream().parallel().forEach(skusEl -> {
+            Product product = null;
+            try {
+                product = getProduct(category, skusEl.selectFirst(".summary-id").text());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
 
             productConsumer.accept(product);
 
             products.add(product);
-        }
+        } );
 
         return products;
     }
@@ -146,6 +150,8 @@ public class MultiCraft implements ProductSource {
      */
     private Product getProduct(final Category category,
                               final String productCode) throws IOException {
+
+        System.out.println("Getting Information of Product " + productCode);
 
         Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);
 
@@ -162,7 +168,7 @@ public class MultiCraft implements ProductSource {
         float price = 0;
         float discount = 0;
 
-        Long upc = 0L;
+        Long upc = null;
 
         Integer invertyQty = 0;
 
@@ -188,17 +194,14 @@ public class MultiCraft implements ProductSource {
 
                 invertyQty = Integer.parseInt(priceText);
 
-
-
             }
             else if(fieldEl.selectFirst(".hdr").text().equals("UPC")) {
-                String priceText = fieldEl
+                String upcTxt = fieldEl
                         .selectFirst(".vlu")
                         .text();
-
-                upc = Long.parseLong(priceText);
-
-
+                if (upcTxt.trim().length() != 0) {
+                    upc = Long.parseLong(upcTxt);
+                }
 
             }
         }
