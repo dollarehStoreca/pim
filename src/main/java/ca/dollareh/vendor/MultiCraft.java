@@ -7,7 +7,9 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
+import ca.dollareh.ProductSource;
 import ca.dollareh.core.model.Product;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.URIBuilder;
@@ -19,13 +21,21 @@ import org.jsoup.select.Elements;
 
 import ca.dollareh.core.model.Category;
 
-public class MultiCraft {
+public class MultiCraft implements ProductSource {
 
     private static String BASE_URL = "https://multicraft.ca";
 
     private final Connection session ;
 
+
+    @Override
+    public void forEach(Consumer<Product> productConsumer) throws URISyntaxException, IOException {
+        getCategory(productConsumer, null, "scrapbook~albums");
+        logout();
+    }
+
     public MultiCraft() throws IOException {
+
         session = Jsoup.newSession()
                 .timeout(45 * 1000)
                 .maxBodySize(5 * 1024 * 1024);
@@ -42,14 +52,16 @@ public class MultiCraft {
                 .post();
     }
 
+
+
     /**
      * Get All Categories from Multicraft.
      * 
      * @return categories
      * @throws IOException
      */
-    public List<Category> getCategories() throws URISyntaxException, IOException {
-        return getCategories(null, getHTMLDocument("/en/brand"));
+    public List<Category> getCategories(Consumer<Product> productConsumer) throws URISyntaxException, IOException {
+        return getCategories(productConsumer,null, getHTMLDocument("/en/brand"));
     }
 
     /**
@@ -58,26 +70,27 @@ public class MultiCraft {
      * @return categories
      * @throws IOException
      */
-    public Category getCategory(final Category parent,String code) throws URISyntaxException, IOException {
-        return getCategory(parent, code, getHTMLDocument("/en/brand/subbrands?code=" + code));
+    public Category getCategory(Consumer<Product> productConsumer, final Category parent,String code) throws URISyntaxException, IOException {
+        return getCategory(productConsumer, parent, code, getHTMLDocument("/en/brand/subbrands?code=" + code));
     }
 
-    private Category getCategory(final Category parent,
+    private Category getCategory(Consumer<Product> productConsumer,
+                                 final Category parent,
                                 final String code,
                                  final Document doc) throws URISyntaxException, IOException {
 
-        Category category = new Category(parent, code,new ArrayList<>() , new ArrayList<>());
+        Category category = new Category(parent, code,new ArrayList<>());
 
-        List<Category> categories = getCategories(category, doc);
+        List<Category> categories = getCategories(productConsumer,category, doc);
         category.categories().addAll(categories);
 
-        List<Product> products = getProducts(category, doc);
-        category.products().addAll(products);
+        List<Product> products = getProducts(productConsumer, category, doc);
+
 
         return category;
     }
 
-    private List<Category> getCategories(final Category parent,final Document doc) throws URISyntaxException, IOException {
+    private List<Category> getCategories(Consumer<Product> productConsumer, final Category parent,final Document doc) throws URISyntaxException, IOException {
         List<Category> categories = new ArrayList<>();
 
         Elements brandsEls = doc.select("ul.brandsList>li>a");
@@ -91,7 +104,8 @@ public class MultiCraft {
                     .map(NameValuePair::getValue);
 
             if (codeOp.isPresent()) {
-                categories.add(getCategory(parent, codeOp.get()));
+                categories.add(getCategory(productConsumer,
+                        parent, codeOp.get()));
             }
         }
         return categories;
@@ -104,14 +118,20 @@ public class MultiCraft {
      * @return categories
      * @throws IOException
      */
-    public List<Product> getProducts(Category category,
+    private List<Product> getProducts(Consumer<Product> productConsumer,
+                                      Category category,
                                      Document brandDoc) throws URISyntaxException, IOException {
         List<Product> products = new ArrayList<>();
 
         Elements skusEls = brandDoc.select("#skusCards>li");
 
         for (Element skusEl : skusEls) {
-            products.add(getProduct(category, skusEl.selectFirst(".summary-id").text()));
+
+            Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
+
+            productConsumer.accept(product);
+
+            products.add(product);
         }
 
         return products;
@@ -124,7 +144,7 @@ public class MultiCraft {
      * @return Product
      * @throws IOException
      */
-    public Product getProduct(final Category category,
+    private Product getProduct(final Category category,
                               final String productCode) throws IOException {
 
         Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);
@@ -203,4 +223,6 @@ public class MultiCraft {
         session.newRequest(BASE_URL + "/en/user/logout")
                 .get();
     }
+
+
 }
