@@ -47,7 +47,7 @@ public class Shopify {
         this.productSource = productSource;
     }
 
-    void downloadCSV(final Path csvPath) throws IOException, CsvException, URISyntaxException {
+    void downloadCSV(final Path csvPath) throws IOException, URISyntaxException {
 
         // Delete CSV If Exists
         if (csvPath.toFile().exists()) {

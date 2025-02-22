@@ -84,16 +84,18 @@ public class MultiCraft implements ProductSource {
         List<Category> categories = getCategories(productConsumer,category, doc);
         category.categories().addAll(categories);
 
-        List<Product> products = getProducts(productConsumer, category, doc);
+        getProducts(productConsumer, category, doc);
 
 
         return category;
     }
 
     private List<Category> getCategories(Consumer<Product> productConsumer, final Category parent,final Document doc) throws URISyntaxException, IOException {
-        List<Category> categories = new ArrayList<>();
+
 
         Elements brandsEls = doc.select("ul.brandsList>li>a");
+
+        List<String> categoryCodes = new ArrayList<>(brandsEls.size());
 
         for (Element brandsAnchorEl : brandsEls) {
             Optional<String> codeOp = new URIBuilder(brandsAnchorEl.attr("href"))
@@ -104,11 +106,21 @@ public class MultiCraft implements ProductSource {
                     .map(NameValuePair::getValue);
 
             if (codeOp.isPresent()) {
-                categories.add(getCategory(productConsumer,
-                        parent, codeOp.get()));
+
+                categoryCodes.add(codeOp.get());
+
+
             }
         }
-        return categories;
+
+        return categoryCodes.stream().parallel().map(code -> {
+            try {
+                return getCategory(productConsumer,
+                        parent, code);
+            } catch (URISyntaxException | IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).toList();
     }
 
     /**
@@ -118,27 +130,20 @@ public class MultiCraft implements ProductSource {
      * @return categories
      * @throws IOException
      */
-    private List<Product> getProducts(Consumer<Product> productConsumer,
+    private void getProducts(Consumer<Product> productConsumer,
                                       Category category,
                                      Document brandDoc) {
-        List<Product> products = new ArrayList<>();
+
 
         Elements skusEls = brandDoc.select("#skusCards>li");
 
         skusEls.stream().parallel().forEach(skusEl -> {
-            Product product = null;
             try {
-                product = getProduct(category, skusEl.selectFirst(".summary-id").text());
+                productConsumer.accept(getProduct(category, skusEl.selectFirst(".summary-id").text()));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-
-            productConsumer.accept(product);
-
-            products.add(product);
         } );
-
-        return products;
     }
 
     /**
