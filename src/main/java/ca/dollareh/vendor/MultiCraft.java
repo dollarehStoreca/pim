@@ -106,10 +106,7 @@ public class MultiCraft implements ProductSource {
                     .map(NameValuePair::getValue);
 
             if (codeOp.isPresent()) {
-
                 categoryCodes.add(codeOp.get());
-
-
             }
         }
 

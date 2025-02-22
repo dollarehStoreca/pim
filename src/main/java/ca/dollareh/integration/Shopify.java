@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 import com.opencsv.exceptions.CsvException;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -15,6 +16,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 public class Shopify {
 
@@ -65,22 +68,37 @@ public class Shopify {
 
             productSource.forEach(product -> {
 
-                Path jsonPath = Path.of("workspace/MultiCraft/" + product.code() + ".json");
+                Path jsonPath = Path.of("workspace/" + productSource.getClass().getSimpleName());
 
-                if(jsonPath.toFile().exists()) {
+                Optional<File> opJsonFile = findFile(jsonPath, product.code() + ".json");
+
+                if(opJsonFile.isPresent()) {
                     try {
                         writeProduct(writer, product.merge(objectMapper
-                                .readValue(jsonPath.toFile(), Product.class)));
+                                    .readValue(opJsonFile.get(), Product.class)));
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-
-                } else {
-                    writeProduct(writer, product);
                 }
 
 
             });
+        }
+    }
+
+    private static Optional<File> findFile(Path rootFolderPath, String fileName) {
+        if (!Files.exists(rootFolderPath) || !Files.isDirectory(rootFolderPath)) {
+            return Optional.empty();
+        }
+
+        try (Stream<Path> paths = Files.walk(rootFolderPath)) {
+            return paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().equals(fileName))
+                    .map(Path::toFile)
+                    .findFirst();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Optional.empty();
         }
     }
 
