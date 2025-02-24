@@ -13,12 +13,12 @@ class ShopifyTest {
 
     @Test
     void testShoppifyMulticraft() throws IOException, URISyntaxException {
-//        new Shopify(new MultiCraft())
-//                .downloadCSV(
-//                        Paths.get("data/product_import.csv")
-//                );
+        new Shopify(new MultiCraft())
+                .downloadCSV(
+                        Paths.get("data/product_import.csv")
+                );
 
-        new MultiCraft().downloadImage("https://multicraft.ca/pics/01/061542172868.jpg");
+       // new MultiCraft().downloadImage("https://multicraft.ca/pics/01/061542172868.jpg");
     }
 
 }

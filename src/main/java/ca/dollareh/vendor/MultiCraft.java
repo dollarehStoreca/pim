@@ -27,7 +27,7 @@ import ca.dollareh.core.model.Category;
 
 public class MultiCraft implements ProductSource {
 
-    private static String BASE_URL = "https://multicraft.ca";
+    public static final String BASE_URL = "https://multicraft.ca/";
 
     private final Connection session ;
 
@@ -59,17 +59,18 @@ public class MultiCraft implements ProductSource {
 
     public void downloadImage(final String imageURL) throws IOException {
 
-        String image = imageURL.replace("https://multicraft.ca/", "");
+        String image = imageURL.replace(BASE_URL, "");
 
         Connection.Response resultImageResponse = session.newRequest(imageURL).ignoreContentType(true).execute();
         // output here
-        File imageFile = Path.of(image).toFile();
+        Path assetsDir = Path.of("assets/" + getClass().getSimpleName());
+        File imageFile = Path.of(assetsDir +"/" + image).toFile();
         imageFile.getParentFile().mkdirs();
         FileOutputStream out = new FileOutputStream(imageFile);
         out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
         out.close();
 
-        logout();
+
     }
 
 
@@ -183,6 +184,7 @@ public class MultiCraft implements ProductSource {
 
         for (int i = 0; i < imageEls.size(); i++) {
             imageUrls[i] = BASE_URL + imageEls.get(i).attr("src").split("\\?")[0];
+            downloadImage(imageUrls[i]);
         }
 
         Elements fieldEls = doc.select("div.details-brief > .row");
