@@ -1,9 +1,13 @@
 package ca.dollareh.vendor;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,6 +54,22 @@ public class MultiCraft implements ProductSource {
                 .data("Password", System.getenv("MULTICRAFT_PW"))
                 .data("__RequestVerificationToken", code)
                 .post();
+    }
+
+
+    public void downloadImage(final String imageURL) throws IOException {
+
+        String image = imageURL.replace("https://multicraft.ca/", "");
+
+        Connection.Response resultImageResponse = session.newRequest(imageURL).ignoreContentType(true).execute();
+        // output here
+        File imageFile = Path.of(image).toFile();
+        imageFile.getParentFile().mkdirs();
+        FileOutputStream out = new FileOutputStream(imageFile);
+        out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
+        out.close();
+
+        logout();
     }
 
 
