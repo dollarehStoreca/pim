@@ -9,17 +9,14 @@ import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 class ShopifyTest {
 
     @Test
-    void testShoppifyMulticraft() throws IOException, URISyntaxException, CsvException {
-
-        Path csvImporPah = Paths.get("data/product_import.csv");
-
+    void testShoppifyMulticraft() throws IOException, URISyntaxException {
         new Shopify(new MultiCraft())
-                .downloadCSV(csvImporPah);
+                .downloadCSV(
+                        Paths.get("data/product_import.csv")
+                );
     }
 
 }

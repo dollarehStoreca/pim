@@ -2,23 +2,18 @@ package ca.dollareh.integration;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class DollarEhEnricherTest {
@@ -46,7 +41,6 @@ public class DollarEhEnricherTest {
                 productMap.put("discount", row.getCell(10).getNumericCellValue());
                 productMap.put("price", row.getCell(11).getNumericCellValue());
 
-
                 StringBuilder builder = new StringBuilder("workspace/MultiCraft/");
 
                 builder.append(row.getCell(3).getStringCellValue()).append("/");
@@ -60,11 +54,13 @@ public class DollarEhEnricherTest {
 
                 path.toFile().getParentFile().mkdirs();
 
-                Files.writeString(path, objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(productMap));
+                Files.writeString(path,
+                        objectMapper
+                        .writerWithDefaultPrettyPrinter()
+                        .writeValueAsString(productMap));
             }
             i++;
         }
-
 
     }
 }
