@@ -41,7 +41,7 @@ public class DollarEhEnricherTest {
                 productMap.put("discount", row.getCell(10).getNumericCellValue());
                 productMap.put("price", row.getCell(11).getNumericCellValue());
 
-                StringBuilder builder = new StringBuilder("workspace/MultiCraft/");
+                StringBuilder builder = new StringBuilder("workspace/transform/MultiCraft/");
 
                 builder.append(row.getCell(3).getStringCellValue()).append("/");
                 builder.append(row.getCell(4).getStringCellValue()).append("/");

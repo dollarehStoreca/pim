@@ -1,12 +1,10 @@
 package ca.dollareh.vendor;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +13,8 @@ import java.util.function.Consumer;
 
 import ca.dollareh.ProductSource;
 import ca.dollareh.core.model.Product;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.URIBuilder;
 import org.jsoup.Connection;
@@ -49,7 +49,7 @@ public class MultiCraft implements ProductSource {
 
         String code = langingPage.selectFirst("input[name=\"__RequestVerificationToken\"]").val();
 
-        Document req1 = session.newRequest("https://multicraft.ca/en/user/login")
+        session.newRequest("https://multicraft.ca/en/user/login")
                 .data("UserName", System.getenv("MULTICRAFT_USER"))
                 .data("Password", System.getenv("MULTICRAFT_PW"))
                 .data("__RequestVerificationToken", code)
@@ -63,7 +63,7 @@ public class MultiCraft implements ProductSource {
 
         Connection.Response resultImageResponse = session.newRequest(imageURL).ignoreContentType(true).execute();
         // output here
-        Path assetsDir = Path.of("assets/" + getClass().getSimpleName());
+        Path assetsDir = Path.of("workspace/extracted/"+ getClass().getSimpleName() +"/assets/" );
         File imageFile = Path.of(assetsDir +"/" + image).toFile();
         imageFile.getParentFile().mkdirs();
         FileOutputStream out = new FileOutputStream(imageFile);
@@ -155,9 +155,20 @@ public class MultiCraft implements ProductSource {
 
         Elements skusEls = brandDoc.select("#skusCards>li");
 
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
         skusEls.stream().parallel().forEach(skusEl -> {
             try {
-                productConsumer.accept(getProduct(category, skusEl.selectFirst(".summary-id").text()));
+                Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
+                Path productJson = Path.of("workspace/extracted/" + getClass().getSimpleName() + "/" + product.code() + ".json");
+
+
+                Files.writeString(productJson,
+                        objectMapper
+                                .writeValueAsString(product));
+
+                productConsumer.accept(product);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

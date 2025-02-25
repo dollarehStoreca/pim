@@ -68,7 +68,7 @@ public class Shopify {
 
             productSource.forEach(product -> {
 
-                Path jsonPath = Path.of("workspace/" + productSource.getClass().getSimpleName());
+                Path jsonPath = Path.of("workspace/transform/" + productSource.getClass().getSimpleName());
 
                 Optional<File> opJsonFile = findFile(jsonPath, product.code() + ".json");
 
