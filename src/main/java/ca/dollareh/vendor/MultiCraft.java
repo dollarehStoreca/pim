@@ -163,10 +163,23 @@ public class MultiCraft implements ProductSource {
                 Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
                 Path productJson = Path.of("workspace/extracted/" + getClass().getSimpleName() + "/" + product.code() + ".json");
 
+                if(productJson.toFile().exists()) {
+                    String productJsonTxt = objectMapper
+                            .writeValueAsString(product);
 
-                Files.writeString(productJson,
-                        objectMapper
-                                .writeValueAsString(product));
+                    if (!productJsonTxt.equals(Files.readString(productJson))) {
+                        System.out.println("Product Modified " + product.code());
+                        Files.writeString(productJson,
+                                productJsonTxt);
+                    }
+
+                } else {
+                    System.out.println("New Product found " + product.code());
+                    Files.writeString(productJson,
+                            objectMapper
+                                    .writeValueAsString(product));
+                }
+
 
                 productConsumer.accept(product);
             } catch (IOException e) {
@@ -184,8 +197,6 @@ public class MultiCraft implements ProductSource {
      */
     private Product getProduct(final Category category,
                               final String productCode) throws IOException {
-
-        System.out.println("Getting Information of Product " + productCode);
 
         Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);
 

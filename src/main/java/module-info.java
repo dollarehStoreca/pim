@@ -3,4 +3,6 @@ module my.module {
     requires com.fasterxml.jackson.databind;
     requires org.apache.httpcomponents.core5.httpcore5;
     requires com.opencsv;
+
+    exports ca.dollareh.core.model;
 }

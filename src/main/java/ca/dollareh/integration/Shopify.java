@@ -64,16 +64,16 @@ public class Shopify {
         try (CSVWriter writer = new CSVWriter(new FileWriter(csvPath.toString()))) {
             writer.writeAll(Collections.singleton(headers));
 
-            productSource.forEach(product -> {
+            productSource.forEach(originalProduct -> {
 
                 Path jsonPath = Path.of("workspace/transform/" + productSource.getClass().getSimpleName());
 
-                Optional<File> opJsonFile = findFile(jsonPath, product.code() + ".json");
+                Optional<File> enrichedProductFile = findFile(jsonPath, originalProduct.code() + ".json");
 
-                if(opJsonFile.isPresent()) {
+                if(enrichedProductFile.isPresent()) {
                     try {
-                        writeProduct(writer, product.merge(objectMapper
-                                    .readValue(opJsonFile.get(), Product.class)));
+                        writeProduct(writer, originalProduct.merge(objectMapper
+                                    .readValue(enrichedProductFile.get(), Product.class)));
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
