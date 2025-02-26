@@ -165,39 +165,14 @@ public class MultiCraft implements ProductSource {
 
         Elements skusEls = brandDoc.select("#skusCards>li");
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+
 
         skusEls.stream().parallel().forEach(skusEl -> {
             try {
                 Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
 
 
-                Path productJsonPath = getPath(product);
-
-                if(productJsonPath.toFile().exists()) {
-                    String productJsonTxt = objectMapper
-                            .writeValueAsString(product);
-
-                    if (!productJsonTxt.equals(Files.readString(productJsonPath))) {
-                        System.out.println("Product Modified " + product.code());
-                        Files.writeString(productJsonPath,
-                                productJsonTxt);
-                        productConsumer.accept(product);
-                    }
-
-                } else {
-                    System.out.println("New Product found " + product.code());
-
-                    productJsonPath.toFile().getParentFile().mkdirs();
-
-                    Files.writeString(productJsonPath,
-                            objectMapper
-                                    .writeValueAsString(product));
-
-                    productConsumer.accept(product);
-                }
-
+                onProductDiscovery(productConsumer, product);
 
 
             } catch (IOException e) {
@@ -205,8 +180,6 @@ public class MultiCraft implements ProductSource {
             }
         } );
     }
-
-
 
     /**
      * Get Product from Multicraft.
