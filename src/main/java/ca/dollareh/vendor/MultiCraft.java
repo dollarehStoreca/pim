@@ -161,21 +161,21 @@ public class MultiCraft implements ProductSource {
         skusEls.stream().parallel().forEach(skusEl -> {
             try {
                 Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
-                Path productJson = Path.of("workspace/extracted/" + getClass().getSimpleName() + "/" + product.code() + ".json");
+                Path productJsonPath = Path.of("workspace/extracted/" + getClass().getSimpleName() + "/" + product.code() + ".json");
 
-                if(productJson.toFile().exists()) {
+                if(productJsonPath.toFile().exists()) {
                     String productJsonTxt = objectMapper
                             .writeValueAsString(product);
 
-                    if (!productJsonTxt.equals(Files.readString(productJson))) {
+                    if (!productJsonTxt.equals(Files.readString(productJsonPath))) {
                         System.out.println("Product Modified " + product.code());
-                        Files.writeString(productJson,
+                        Files.writeString(productJsonPath,
                                 productJsonTxt);
                     }
 
                 } else {
                     System.out.println("New Product found " + product.code());
-                    Files.writeString(productJson,
+                    Files.writeString(productJsonPath,
                             objectMapper
                                     .writeValueAsString(product));
                 }
