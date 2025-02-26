@@ -1,6 +1,7 @@
 package ca.dollareh.integration;
 
 import ca.dollareh.ProductSource;
+import ca.dollareh.core.model.Category;
 import ca.dollareh.core.model.Product;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -106,9 +107,12 @@ public class Shopify {
         newLine[1] = product.title();
         newLine[2] = product.description();
         newLine[3] = "Dollareh";
-        newLine[4] = product.category().code();
-        if(product.category().parent() != null) {
-            newLine[5] = product.category().parent().code();
+
+        Category category = product.categories().get(0);
+
+        newLine[4] = category.code();
+        if(category.parent() != null) {
+            newLine[5] = category.parent().code();
         }
 
         newLine[6] = "Imported";
@@ -132,7 +136,7 @@ public class Shopify {
         newLine[45] = "g";
         newLine[50] = "active";
 
-        newLine[51] = product.category().code();
+        newLine[51] = category.code();
 
         newLine[53] = "" + product.upc();
 

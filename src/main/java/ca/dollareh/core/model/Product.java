@@ -1,6 +1,8 @@
 package ca.dollareh.core.model;
 
-public record Product(Category category,
+import java.util.List;
+
+public record Product(List<Category> categories,
                       String code,
                       String title,
                       String description,
@@ -9,18 +11,9 @@ public record Product(Category category,
                       Float price,
                       Float discount,
                       String[] imageUrls) {
-    @Override
-    public String toString() {
-        return code;
-    }
-
-    @Override
-    public int hashCode() {
-        return code.hashCode();
-    }
 
     public Product merge(final Product product1) {
-        return new Product(product1.category == null ? category : product1.category,
+        return new Product(product1.categories == null ? categories : product1.categories,
                 product1.code == null ? code : product1.code,
                 product1.title == null ? title : product1.title,
                 product1.description == null ? description : product1.description,

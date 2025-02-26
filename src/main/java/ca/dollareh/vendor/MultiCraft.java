@@ -100,10 +100,10 @@ public class MultiCraft implements ProductSource {
                                 final String code,
                                  final Document doc) throws URISyntaxException, IOException {
 
-        Category category = new Category(parent, code,new ArrayList<>());
+        Category category = new Category(parent, code);
 
-        List<Category> categories = getCategories(productConsumer,category, doc);
-        category.categories().addAll(categories);
+        getCategories(productConsumer,category, doc);
+
 
         getProducts(productConsumer, category, doc);
 
@@ -252,7 +252,7 @@ public class MultiCraft implements ProductSource {
             }
         }
 
-        return new Product(category,
+        return new Product(List.of(category),
                 productCode
                 , doc.selectFirst(".details-desc") == null ? null : doc.selectFirst(".details-desc").text()
                 , doc.selectFirst(".details-blurb") == null ? null : doc.selectFirst(".details-blurb").text()
