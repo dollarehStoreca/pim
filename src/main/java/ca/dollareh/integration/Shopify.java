@@ -81,6 +81,8 @@ public class Shopify {
                     }
                 }
             });
+
+            productSource.logout();
         }
     }
 

@@ -12,6 +12,8 @@ public interface ProductSource {
 
     void downloadAssets(final Product product) throws IOException;
 
+    void logout() throws IOException;
+
     default Path getPath(final Product product) {
         StringBuilder builder = new StringBuilder("workspace/extracted/" + getClass().getSimpleName() + "/");
 

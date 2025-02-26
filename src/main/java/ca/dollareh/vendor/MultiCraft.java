@@ -35,7 +35,6 @@ public class MultiCraft implements ProductSource {
     @Override
     public void forEach(Consumer<Product> productConsumer) throws URISyntaxException, IOException {
         getCategory(productConsumer, null, "scrapbook");
-        logout();
     }
 
     @Override
@@ -43,6 +42,12 @@ public class MultiCraft implements ProductSource {
         for (String imageUrl: product.imageUrls()) {
             downloadImage(imageUrl);
         }
+    }
+
+    @Override
+    public void logout() throws IOException {
+        session.newRequest(BASE_URL + "/en/user/logout")
+                .get();
     }
 
     public MultiCraft() throws IOException {
@@ -282,10 +287,7 @@ public class MultiCraft implements ProductSource {
         return session.newRequest(BASE_URL + url).get();
     }
 
-    public void logout() throws IOException {
-        session.newRequest(BASE_URL + "/en/user/logout")
-                .get();
-    }
+
 
 
 }
