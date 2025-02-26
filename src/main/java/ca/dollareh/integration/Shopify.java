@@ -75,12 +75,11 @@ public class Shopify {
                     try {
                         writeProduct(writer, originalProduct.merge(objectMapper
                                     .readValue(enrichedProductFile.get(), Product.class)));
+                        productSource.downloadAssets(originalProduct);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
                 }
-
-
             });
         }
     }

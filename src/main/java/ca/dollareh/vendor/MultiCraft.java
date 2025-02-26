@@ -38,6 +38,13 @@ public class MultiCraft implements ProductSource {
         logout();
     }
 
+    @Override
+    public void downloadAssets(final Product product) throws IOException {
+        for (String imageUrl: product.imageUrls()) {
+            downloadImage(imageUrl);
+        }
+    }
+
     public MultiCraft() throws IOException {
 
         session = Jsoup.newSession()
@@ -70,9 +77,7 @@ public class MultiCraft implements ProductSource {
         out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
         out.close();
 
-
     }
-
 
 
     /**
@@ -161,7 +166,9 @@ public class MultiCraft implements ProductSource {
         skusEls.stream().parallel().forEach(skusEl -> {
             try {
                 Product product = getProduct(category, skusEl.selectFirst(".summary-id").text());
-                Path productJsonPath = Path.of("workspace/extracted/" + getClass().getSimpleName() + "/" + product.code() + ".json");
+
+
+                Path productJsonPath = getPath(product);
 
                 if(productJsonPath.toFile().exists()) {
                     String productJsonTxt = objectMapper
@@ -171,22 +178,30 @@ public class MultiCraft implements ProductSource {
                         System.out.println("Product Modified " + product.code());
                         Files.writeString(productJsonPath,
                                 productJsonTxt);
+                        productConsumer.accept(product);
                     }
 
                 } else {
                     System.out.println("New Product found " + product.code());
+
+                    productJsonPath.toFile().getParentFile().mkdirs();
+
                     Files.writeString(productJsonPath,
                             objectMapper
                                     .writeValueAsString(product));
+
+                    productConsumer.accept(product);
                 }
 
 
-                productConsumer.accept(product);
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         } );
     }
+
+
 
     /**
      * Get Product from Multicraft.
@@ -206,7 +221,6 @@ public class MultiCraft implements ProductSource {
 
         for (int i = 0; i < imageEls.size(); i++) {
             imageUrls[i] = BASE_URL + imageEls.get(i).attr("src").split("\\?")[0];
-            downloadImage(imageUrls[i]);
         }
 
         Elements fieldEls = doc.select("div.details-brief > .row");
