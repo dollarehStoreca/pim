@@ -18,7 +18,13 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Shopify {
+
+
+    final Logger logger = LoggerFactory.getLogger(Shopify.class);
 
     private static final String[] headers = new String[]{
             "Handle","Title","Body (HTML)"
@@ -66,6 +72,8 @@ public class Shopify {
             writer.writeAll(Collections.singleton(headers));
 
             productSource.forEach(originalProduct -> {
+
+                logger.info("Product Received {}" , originalProduct.code());
 
                 Path jsonPath = Path.of("workspace/transform/" + productSource.getClass().getSimpleName());
 

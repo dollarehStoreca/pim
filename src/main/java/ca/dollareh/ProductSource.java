@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.util.function.Consumer;
 
 public interface ProductSource {
+
     void forEach(Consumer<Product> productConsumer) throws URISyntaxException, IOException;
 
     void downloadAssets(final Product product) throws IOException;
@@ -29,8 +30,7 @@ public interface ProductSource {
         builder.append(product.code());
         builder.append(".json");
 
-        Path productJsonPath = Path.of(builder.toString());
-        return productJsonPath;
+        return Path.of(builder.toString());
     }
 
     default void onProductDiscovery(final Consumer<Product> productConsumer, final Product product) throws IOException {
@@ -41,17 +41,12 @@ public interface ProductSource {
         if(productJsonPath.toFile().exists()) {
             String productJsonTxt = objectMapper
                     .writeValueAsString(product);
-
             if (!productJsonTxt.equals(Files.readString(productJsonPath))) {
-                System.out.println("Product Modified " + product.code());
                 Files.writeString(productJsonPath,
                         productJsonTxt);
                 productConsumer.accept(product);
             }
-
         } else {
-            System.out.println("New Product found " + product.code());
-
             productJsonPath.toFile().getParentFile().mkdirs();
 
             Files.writeString(productJsonPath,
