@@ -18,20 +18,6 @@ public interface ProductSource {
 
     void logout() throws IOException;
 
-    default Path getPath(final Product product) {
-        StringBuilder builder = new StringBuilder("workspace/extracted/" + getClass().getSimpleName() + "/");
-
-        product.categories().forEach(category1 -> {
-            do {
-                builder.append(category1.code()).append("/");
-            } while (category1.parent() == null);
-        });
-
-        builder.append(product.code());
-        builder.append(".json");
-
-        return Path.of(builder.toString());
-    }
 
     default void onProductDiscovery(final Consumer<Product> productConsumer, final Product product) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -56,5 +42,22 @@ public interface ProductSource {
             productConsumer.accept(product);
         }
     }
+
+
+    private Path getPath(final Product product) {
+        StringBuilder builder = new StringBuilder("workspace/extracted/" + getClass().getSimpleName() + "/");
+
+        product.categories().forEach(category -> {
+            do {
+                builder.append(category.code()).append("/");
+            } while (category.parent() == null);
+        });
+
+        builder.append(product.code());
+        builder.append(".json");
+
+        return Path.of(builder.toString());
+    }
+
 
 }
