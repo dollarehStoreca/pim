@@ -5,5 +5,7 @@ module my.module {
     requires com.opencsv;
     requires org.slf4j;
 
+    requires java.net.http;
+
     exports ca.dollareh.core.model;
 }

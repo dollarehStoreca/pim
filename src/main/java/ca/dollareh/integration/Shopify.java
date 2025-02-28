@@ -91,6 +91,8 @@ public class Shopify {
             });
 
             productSource.logout();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 

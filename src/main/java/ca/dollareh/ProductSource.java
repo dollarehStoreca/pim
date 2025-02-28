@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 
 public interface ProductSource {
 
-    void forEach(Consumer<Product> productConsumer) throws URISyntaxException, IOException;
+    void forEach(Consumer<Product> productConsumer) throws URISyntaxException, IOException, InterruptedException;
 
     void downloadAssets(final Product product) throws IOException;
 
@@ -47,11 +47,14 @@ public interface ProductSource {
     private Path getPath(final Product product) {
         StringBuilder builder = new StringBuilder("workspace/extracted/" + getClass().getSimpleName() + "/");
 
-        product.categories().forEach(category -> {
-            do {
-                builder.append(category.code()).append("/");
-            } while (category.parent() == null);
-        });
+        if(product.categories() != null) {
+            product.categories().forEach(category -> {
+                do {
+                    builder.append(category.code()).append("/");
+                } while (category.parent() == null);
+            });
+        }
+
 
         builder.append(product.code());
         builder.append(".json");
