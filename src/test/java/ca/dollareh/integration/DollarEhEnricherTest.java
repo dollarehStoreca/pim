@@ -43,9 +43,9 @@ public class DollarEhEnricherTest {
 
                 StringBuilder builder = new StringBuilder("workspace/transform/MultiCraft/");
 
-                builder.append(row.getCell(3).getStringCellValue()).append("/");
-                builder.append(row.getCell(4).getStringCellValue()).append("/");
-                builder.append(row.getCell(5).getStringCellValue()).append("/");
+                builder.append(row.getCell(3).getStringCellValue().trim()).append("/");
+                builder.append(row.getCell(4).getStringCellValue().trim()).append("/");
+                builder.append(row.getCell(5).getStringCellValue().trim()).append("/");
 
                 builder.append(code);
                 builder.append(".json");
