@@ -1,9 +1,6 @@
 package ca.dollareh.core.model;
 
-import java.util.List;
-
-public record Product(List<Category> categories,
-                      String code,
+public record Product(String code,
                       String title,
                       String description,
                       Long upc,
@@ -13,7 +10,7 @@ public record Product(List<Category> categories,
                       String[] imageUrls) {
 
     public Product merge(final Product product1) {
-        return new Product(product1.categories == null ? categories : product1.categories,
+        return new Product(
                 product1.code == null ? code : product1.code,
                 product1.title == null ? title : product1.title,
                 product1.description == null ? description : product1.description,

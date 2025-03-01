@@ -1,14 +1,12 @@
 package ca.dollareh.integration;
 
-import ca.dollareh.ProductSource;
-import ca.dollareh.core.model.Category;
+import ca.dollareh.vendor.ProductSource;
 import ca.dollareh.core.model.Product;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -68,32 +66,32 @@ public class Shopify {
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
 
-        try (CSVWriter writer = new CSVWriter(new FileWriter(csvPath.toString()))) {
-            writer.writeAll(Collections.singleton(headers));
-
-            productSource.forEach(originalProduct -> {
-
-                logger.info("Product Received {}" , originalProduct.code());
-
-                Path jsonPath = Path.of("workspace/transform/" + productSource.getClass().getSimpleName());
-
-                Optional<File> enrichedProductFile = findFile(jsonPath, originalProduct.code() + ".json");
-
-                if(enrichedProductFile.isPresent()) {
-                    try {
-                        writeProduct(writer, originalProduct.merge(objectMapper
-                                    .readValue(enrichedProductFile.get(), Product.class)));
-                        productSource.downloadAssets(originalProduct);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            });
-
-            productSource.logout();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
+//        try (CSVWriter writer = new CSVWriter(new FileWriter(csvPath.toString()))) {
+//            writer.writeAll(Collections.singleton(headers));
+//
+//            productSource.forEach(originalProduct -> {
+//
+//                logger.info("Product Received {}" , originalProduct.code());
+//
+//                Path jsonPath = Path.of("workspace/transform/" + productSource.getClass().getSimpleName());
+//
+//                Optional<File> enrichedProductFile = findFile(jsonPath, originalProduct.code() + ".json");
+//
+//                if(enrichedProductFile.isPresent()) {
+//                    try {
+//                        writeProduct(writer, originalProduct.merge(objectMapper
+//                                    .readValue(enrichedProductFile.get(), Product.class)));
+//                        productSource.downloadAssets(originalProduct);
+//                    } catch (IOException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }
+//            });
+//
+//            productSource.logout();
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
     }
 
     private static Optional<File> findFile(Path rootFolderPath, String fileName) {
@@ -111,58 +109,58 @@ public class Shopify {
             return Optional.empty();
         }
     }
-
-    private static void writeProduct(CSVWriter writer, Product product) {
-        String[] newLine = new String[headers.length];
-        newLine[0] = product.code();
-        newLine[1] = product.title();
-        newLine[2] = product.description();
-        newLine[3] = "Dollareh";
-
-        Category category = product.categories().get(0);
-
-        newLine[4] = category.code();
-        if(category.parent() != null) {
-            newLine[5] = category.parent().code();
-        }
-
-        newLine[6] = "Imported";
-        newLine[7] = "TRUE";
-
-        newLine[16] = "shopify";
-
-        newLine[17] = "" + product.inventryCode();
-
-        newLine[18] = "deny";
-
-        newLine[19] = "manual";
-
-        newLine[20] = "" + product.price();
-
-        newLine[22] = "TRUE";
-        newLine[23] = "TRUE";
-
-        newLine[25] = product.imageUrls()[0];
-
-        newLine[45] = "g";
-        newLine[50] = "active";
-
-        newLine[51] = category.code();
-
-        newLine[53] = "" + product.upc();
-
-        writer.writeAll(Collections.singleton(newLine));
-
-        // Cleanup Column Values
-        Arrays.fill(newLine, "");
-
-        if(product.imageUrls().length >= 2 ) {
-            for (int i = 1; i < 2; i++) {
-                newLine[0] = product.code();
-                newLine[25] = product.imageUrls()[i];
-                writer.writeAll(Collections.singleton(newLine));
-            }
-        }
-    }
+//
+//    private static void writeProduct(CSVWriter writer, Product product) {
+//        String[] newLine = new String[headers.length];
+//        newLine[0] = product.code();
+//        newLine[1] = product.title();
+//        newLine[2] = product.description();
+//        newLine[3] = "Dollareh";
+//
+//        Category category = product.categories().get(0);
+//
+//        newLine[4] = category.code();
+//        if(category.parent() != null) {
+//            newLine[5] = category.parent().code();
+//        }
+//
+//        newLine[6] = "Imported";
+//        newLine[7] = "TRUE";
+//
+//        newLine[16] = "shopify";
+//
+//        newLine[17] = "" + product.inventryCode();
+//
+//        newLine[18] = "deny";
+//
+//        newLine[19] = "manual";
+//
+//        newLine[20] = "" + product.price();
+//
+//        newLine[22] = "TRUE";
+//        newLine[23] = "TRUE";
+//
+//        newLine[25] = product.imageUrls()[0];
+//
+//        newLine[45] = "g";
+//        newLine[50] = "active";
+//
+//        newLine[51] = category.code();
+//
+//        newLine[53] = "" + product.upc();
+//
+//        writer.writeAll(Collections.singleton(newLine));
+//
+//        // Cleanup Column Values
+//        Arrays.fill(newLine, "");
+//
+//        if(product.imageUrls().length >= 2 ) {
+//            for (int i = 1; i < 2; i++) {
+//                newLine[0] = product.code();
+//                newLine[25] = product.imageUrls()[i];
+//                writer.writeAll(Collections.singleton(newLine));
+//            }
+//        }
+//    }
 
 }

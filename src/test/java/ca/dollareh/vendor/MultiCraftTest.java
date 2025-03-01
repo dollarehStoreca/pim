@@ -8,23 +8,29 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
-import java.util.function.Consumer;
 
-public class MultiCraft extends ProductSource {
+class MultiCraftTest {
+
+    Path path = Path.of("workspace/extracted/" + getClass().getSimpleName());
 
     public static final String BASE_URL = "https://multicraft.ca/";
 
-    MultiCraft(final Consumer<Product> newProductConsumer,
-                         final Consumer<Product> modifiedProductConsumer) {
-        super(newProductConsumer, modifiedProductConsumer);
+    @Test
+    void testCrawl() throws URISyntaxException, IOException, InterruptedException {
+//        new MultiCraft().forEach(product -> {
+//            System.out.println(product);
+//        });
+
+        browse();
+
     }
 
-    @Override
     public void browse() throws IOException, URISyntaxException {
         Connection session = Jsoup.newSession()
                 .timeout(45 * 1000)
@@ -58,6 +64,8 @@ public class MultiCraft extends ProductSource {
 
         categoryDir.toFile().mkdirs();
 
+        System.out.println(categoryDir);
+
         for (Element brandsAnchorEl : brandsEls) {
             new URIBuilder(brandsAnchorEl.attr("href"))
                     .getQueryParams()
@@ -78,10 +86,11 @@ public class MultiCraft extends ProductSource {
 
         skusEls.stream().parallel().forEach(skusEl -> {
             try {
-                onProductDiscovery(categoryDir,
-                        getProduct(
-                                skusEl.selectFirst(".summary-id").text(),
-                                session));
+
+
+                System.out.println(getProduct( skusEl.selectFirst(".summary-id").text(), session));
+
+
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
