@@ -41,20 +41,15 @@
     "images": [
       {
         "position": 1,
-        "alt": null,
-        "width": 1,
-        "height": 1,
-        "src": "https://cdn.shopify.com/s/files/1/0006/9093/3842/products/df3e567d6f16d040326c7a0ea29a4f41.gif?v=1579016017",
-        "variant_ids": []
+        "alt": "Burton Custom Freestyle 153",
+        "src": "https://cdn.shopify.com/s/files/1/0006/9093/3842/products/df3e567d6f16d040326c7a0ea29a4f41.gif?v=1579016017"
       }
     ],
     "image": {
-      "position": 1,
-      "alt": null,
-      "width": 1,
-      "height": 1,
-      "src": "https://cdn.shopify.com/s/files/1/0006/9093/3842/products/df3e567d6f16d040326c7a0ea29a4f41.gif?v=1579016017",
-      "variant_ids": []
+      "position": 2,
+      "alt": "Burton Custom Freestyle 153",
+
+      "src": "https://cdn.shopify.com/s/files/1/0006/9093/3842/products/df3e567d6f16d040326c7a0ea29a4f41.gif?v=1579016017"
     }
   }
 }
