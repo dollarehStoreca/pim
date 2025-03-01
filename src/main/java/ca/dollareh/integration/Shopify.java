@@ -12,8 +12,10 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -64,6 +66,29 @@ public class Shopify {
 
                     productMap.put("title", enrichedProduct.title());
                     productMap.put("body_html", enrichedProduct.description());
+                    productMap.put("handle", enrichedProduct.code());
+
+                    List<Map<String, Object>> variantsList = (List<Map<String, Object>>) productMap.get("variants");
+
+                    variantsList.get(0).put("price", enrichedProduct.price());
+                    variantsList.get(0).put("compare_at_price", enrichedProduct.discount());
+
+                    Map<String, Object> imageMap = ((Map<String, Object>) productMap.get("image"));
+
+                    imageMap.put("alt", enrichedProduct.title());
+                    imageMap.put("src", enrichedProduct.imageUrls()[0]);
+
+                    List<Map<String, Object>> imagesList = new ArrayList<>(enrichedProduct.imageUrls().length);
+
+                    for (int i = 0; i < enrichedProduct.imageUrls().length; i++) {
+                        imageMap =  new HashMap<>();
+                        imageMap.put("position", i + 1);
+                        imageMap.put("alt", enrichedProduct.title());
+                        imageMap.put("src", enrichedProduct.imageUrls()[i]);
+                        imagesList.add(imageMap);
+                    }
+
+                    productMap.put("images", imagesList);
 
 
                     File shoppifyJson = new File(exportPath.toFile(), enrichedProduct.code() + ".json");
