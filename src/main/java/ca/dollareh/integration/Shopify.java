@@ -42,6 +42,8 @@ public class Shopify {
 
     public void export() throws IOException {
 
+        this.productSource.enrich();
+
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
