@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.opencsv.CSVWriter;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -19,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.stream.Stream;
 
 import org.slf4j.Logger;
@@ -44,8 +46,12 @@ public class Shopify {
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
+        Path transformPath = Path.of("workspace/transform/" + productSource.getClass().getSimpleName());
 
         Map<String, Object> shoppifyTemplate = objectMapper.readValue(Path.of("sample/product-creation.json").toFile()
+                , new TypeReference<>() {});
+
+        Map<String, Object> shoppifyColTemplate = objectMapper.readValue(Path.of("sample/product-collection-association.json").toFile()
                 , new TypeReference<>() {});
 
         try (Stream<Path> paths = Files.walk(enrichmentPath)) {
@@ -55,6 +61,12 @@ public class Shopify {
                     .toList();
 
             jsonFiles.forEach(enrichedJsonPath -> {
+
+                File transformFolder = new File(transformPath.toFile(),
+                        enrichedJsonPath.toString().replace(enrichmentPath.toString(), "")).getParentFile();
+
+                File categoriesProps = new File(transformFolder, transformFolder.getName() + ".properties");
+                System.out.println(categoriesProps);
 
                 try {
                     Product enrichedProduct = objectMapper
@@ -94,6 +106,17 @@ public class Shopify {
                     File shoppifyJson = new File(exportPath.toFile(), enrichedProduct.code() + ".json");
 
                     objectMapper.writerWithDefaultPrettyPrinter().writeValue(shoppifyJson, shoppifyTemplate);
+
+                    Properties collectionProps = new Properties();
+                    collectionProps.load(new FileInputStream(categoriesProps));
+
+                    File shoppifyCollectionJson = new File(exportPath.toFile(), enrichedProduct.code() + "-collection.json");
+
+                    Map<String,Object> collectMap = (Map<String, Object>) shoppifyColTemplate.get("collect");
+
+                    collectMap.put("collection_id", collectionProps.get("shoppifyId"));
+
+                    objectMapper.writerWithDefaultPrettyPrinter().writeValue(shoppifyCollectionJson, shoppifyColTemplate);
 
                 } catch (IOException e) {
                     throw new RuntimeException(e);
