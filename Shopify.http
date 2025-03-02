@@ -1,0 +1,81 @@
+@baseUrl = https://nu1ayu-dh.myshopify.com/admin/api/2025-01
+@accessToken = XXXX
+
+### Create Product
+# @name product
+
+POST {{baseUrl}}/products.json HTTP/1.1
+Content-Type: application/json
+X-Shopify-Access-Token: {{accessToken}}
+
+{
+  "product" : {
+    "title" : "API Artist Brush Set: 'Stubbies' Smooth Handle Bristle x3 Wood Handle A) Round #2/4/6",
+    "body_html" : "The maximum hold natural bristles allow for smooth application of thick mediums & textured paint. Great for DIY Craft & Decor painting and stenciling projects. These premium quality brushes are an essential for every artist!",
+    "vendor" : "Dollareh",
+    "handle" : "AB020A",
+    "published_scope" : "web",
+    "tags" : "imported",
+    "variants" : [ {
+      "title" : "Default Title",
+      "price" : 3.56,
+      "sku" : "",
+      "position" : 1,
+      "inventory_policy" : "deny",
+      "compare_at_price" : 1.78,
+      "fulfillment_service" : "manual",
+      "inventory_management" : "shopify",
+      "option1" : "Default Title",
+      "taxable" : true,
+      "grams" : 0,
+      "weight" : 0,
+      "weight_unit" : "lb",
+      "inventory_quantity" : 100,
+      "requires_shipping" : true
+    } ],
+    "options" : [ {
+      "name" : "Title",
+      "position" : 1,
+      "values" : [ "Default Title" ]
+    } ],
+    "images" : [ {
+      "src" : "https://multicraft.ca//pics/01/083110067189.jpg",
+      "alt" : "Artist Brush Set: 'Stubbies' Smooth Handle Bristle x3 Wood Handle A) Round #2/4/6",
+      "position" : 1
+    }, {
+      "src" : "https://multicraft.ca//pics/01/083110067190.jpg",
+      "alt" : "Artist Brush Set: 'Stubbies' Smooth Handle Bristle x3 Wood Handle A) Round #2/4/6",
+      "position" : 2
+    }, {
+      "src" : "https://multicraft.ca//pics/01/083110067191.jpg",
+      "alt" : "Artist Brush Set: 'Stubbies' Smooth Handle Bristle x3 Wood Handle A) Round #2/4/6",
+      "position" : 3
+    }, {
+      "src" : "https://multicraft.ca//pics/01/083110067192.jpg",
+      "alt" : "Artist Brush Set: 'Stubbies' Smooth Handle Bristle x3 Wood Handle A) Round #2/4/6",
+      "position" : 4
+    } ],
+    "image" : {
+      "position" : 1,
+      "alt" : "Artist Brush Set: 'Stubbies' Smooth Handle Bristle x3 Wood Handle A) Round #2/4/6",
+      "src" : "https://multicraft.ca//pics/01/083110067189.jpg"
+    }
+  }
+}
+###
+
+
+POST {{baseUrl}}/collects.json HTTP/1.1
+Content-Type: application/json
+X-Shopify-Access-Token: {{accessToken}}
+
+{
+  "collect": {
+    "collection_id": 318358585502,
+    "product_id": {{product.response.body.$.product.id}},
+    "created_at": "2020-01-14T10:35:40-05:00",
+    "updated_at": "2020-01-14T10:35:40-05:00",
+    "position": 2,
+    "sort_value": "0000000002"
+  }
+}
