@@ -8,13 +8,18 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DollarEhEnricherTest {
 
@@ -61,6 +66,37 @@ public class DollarEhEnricherTest {
             }
             i++;
         }
+
+        Path rootPath = Path.of("workspace/transform/MultiCraft"); // Change this to your actual path
+
+        try (Stream<Path> paths = Files.walk(rootPath)) { // Get only direct subfolders
+            // Filter directories (excluding root path itself)
+            var subfolders = paths
+                    .filter(Files::isDirectory)
+                    .filter(path -> !path.equals(rootPath)) // Exclude root folder itself
+                    .collect(Collectors.toList());
+
+            AtomicInteger integer = new AtomicInteger();
+
+            // Create properties file in each subfolder
+            for (Path folder : subfolders) {
+                File configFile = new File(folder.toFile(), folder.toFile().getName() + ".properties");
+
+                if(!configFile.exists()) {
+                    try {
+                        Files.writeString(configFile.toPath(), "shoppifyId=" + integer.incrementAndGet());
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
 
     }
 }
