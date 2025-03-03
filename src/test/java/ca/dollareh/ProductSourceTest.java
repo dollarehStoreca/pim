@@ -13,18 +13,18 @@ class ProductSourceTest {
     void testMultiCraft() throws IOException, URISyntaxException {
         ProductSource productSource = ProductSource
                 .from(MultiCraft.class)
-                        .onNew(newProduct -> {
-                            System.out.println("New Product Found " + newProduct);
-                        })
-                        .onModified(updatedProduct -> {
-                            System.out.println("Product Modified " + updatedProduct);
-                        })
+                .onNew(newProduct -> {
+                    System.out.println("New Product Found " + newProduct);
+                })
+                .onModified(updatedProduct -> {
+                    System.out.println("Product Modified " + updatedProduct);
+                })
                 .build();
 
-         productSource.browse();
+        productSource.browse();
 
 
-      //  productSource.enrich();
+        //  productSource.enrich();
 
     }
 

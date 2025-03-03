@@ -6,6 +6,7 @@ module my.module {
     requires org.slf4j;
 
     requires java.net.http;
+    requires com.google.common;
 
     exports ca.dollareh.core.model;
 }

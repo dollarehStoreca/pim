@@ -20,7 +20,7 @@ public class MultiCraft extends ProductSource {
     public static final String BASE_URL = "https://multicraft.ca/";
 
     MultiCraft(final Consumer<Product> newProductConsumer,
-                         final Consumer<Product> modifiedProductConsumer) {
+               final Consumer<Product> modifiedProductConsumer) {
         super(newProductConsumer, modifiedProductConsumer);
     }
 
@@ -85,7 +85,7 @@ public class MultiCraft extends ProductSource {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        } );
+        });
 
     }
 
@@ -118,13 +118,13 @@ public class MultiCraft extends ProductSource {
         Integer invertyQty = 0;
 
         for (Element fieldEl : fieldEls) {
-            if(fieldEl.selectFirst(".hdr").text().equals("unit price")) {
+            if (fieldEl.selectFirst(".hdr").text().equals("unit price")) {
 
                 String priceText = fieldEl
                         .selectFirst(".vlu")
                         .text()
-                        .replace("$","");
-                if(priceText.contains(" ")) {
+                        .replace("$", "");
+                if (priceText.contains(" ")) {
                     String[] spli = priceText.split(" ");
                     price = Float.parseFloat(spli[0]);
                     discount = Float.parseFloat(spli[1]);
@@ -132,15 +132,14 @@ public class MultiCraft extends ProductSource {
                     price = Float.parseFloat(priceText);
                 }
 
-            } else if(fieldEl.selectFirst(".hdr").text().equals("pack")) {
+            } else if (fieldEl.selectFirst(".hdr").text().equals("pack")) {
                 String priceText = fieldEl
                         .selectFirst(".vlu")
                         .text();
 
                 invertyQty = Integer.parseInt(priceText);
 
-            }
-            else if(fieldEl.selectFirst(".hdr").text().equals("UPC")) {
+            } else if (fieldEl.selectFirst(".hdr").text().equals("UPC")) {
                 String upcTxt = fieldEl
                         .selectFirst(".vlu")
                         .text();

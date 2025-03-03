@@ -1,133 +1,183 @@
 package ca.dollareh.integration;
 
-import ca.dollareh.vendor.ProductSource;
 import ca.dollareh.core.model.Product;
+import ca.dollareh.vendor.ProductSource;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.opencsv.CSVWriter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
-import java.net.URISyntaxException;
-import java.nio.file.Files;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Properties;
-import java.util.stream.Stream;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Shopify {
 
     final Logger logger = LoggerFactory.getLogger(Shopify.class);
 
-    protected final Path exportPath = Path.of("workspace/export/" + getClass().getSimpleName());
+    private final String baseUrl;
+
+    private final Path exportPath;
+
+    private final ObjectMapper objectMapper;
 
     private final ProductSource productSource;
 
     public Shopify(ProductSource productSource) {
         this.productSource = productSource;
 
+        baseUrl = System.getenv("SHOPIFY_BASE_UEL");
+
+        exportPath = Path.of("workspace/export/" + getClass().getSimpleName() + "/" + productSource.getClass().getSimpleName());
+
         exportPath.toFile().mkdirs();
+
+        objectMapper = new ObjectMapper();
+        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     }
 
     public void export() throws IOException {
 
         this.productSource.enrich();
 
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+        File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
 
-        Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
-        Path transformPath = Path.of("workspace/transform/" + productSource.getClass().getSimpleName());
+        Properties properties = new Properties();
 
-        Map<String, Object> shoppifyTemplate = objectMapper.readValue(Path.of("sample/product-creation.json").toFile()
-                , new TypeReference<>() {});
-
-        Map<String, Object> shoppifyColTemplate = objectMapper.readValue(Path.of("sample/product-collection-association.json").toFile()
-                , new TypeReference<>() {});
-
-        try (Stream<Path> paths = Files.walk(enrichmentPath)) {
-            List<Path> jsonFiles = paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().toLowerCase().endsWith(".json"))
-                    .toList();
-
-            jsonFiles.forEach(enrichedJsonPath -> {
-
-                File transformFolder = new File(transformPath.toFile(),
-                        enrichedJsonPath.toString().replace(enrichmentPath.toString(), "")).getParentFile();
-
-                File categoriesProps = new File(transformFolder, transformFolder.getName() + ".properties");
-                System.out.println(categoriesProps);
-
-                try {
-                    Product enrichedProduct = objectMapper
-                            .readValue(enrichedJsonPath.toFile(), Product.class);
-
-                    // Message Conversion
-
-                    Map<String, Object> productMap = ((Map<String, Object>) shoppifyTemplate.get("product"));
-
-                    productMap.put("title", enrichedProduct.title());
-                    productMap.put("body_html", enrichedProduct.description());
-                    productMap.put("handle", enrichedProduct.code());
-
-                    List<Map<String, Object>> variantsList = (List<Map<String, Object>>) productMap.get("variants");
-
-                    variantsList.get(0).put("price", enrichedProduct.price());
-                    variantsList.get(0).put("compare_at_price", enrichedProduct.discount());
-
-                    Map<String, Object> imageMap = ((Map<String, Object>) productMap.get("image"));
-
-                    imageMap.put("alt", enrichedProduct.title());
-                    imageMap.put("src", enrichedProduct.imageUrls()[0]);
-
-                    List<Map<String, Object>> imagesList = new ArrayList<>(enrichedProduct.imageUrls().length);
-
-                    for (int i = 0; i < enrichedProduct.imageUrls().length; i++) {
-                        imageMap =  new HashMap<>();
-                        imageMap.put("position", i + 1);
-                        imageMap.put("alt", enrichedProduct.title());
-                        imageMap.put("src", enrichedProduct.imageUrls()[i]);
-                        imagesList.add(imageMap);
-                    }
-
-                    productMap.put("images", imagesList);
-
-
-                    File shoppifyJson = new File(exportPath.toFile(), enrichedProduct.code() + ".json");
-
-                    objectMapper.writerWithDefaultPrettyPrinter().writeValue(shoppifyJson, shoppifyTemplate);
-
-                    Properties collectionProps = new Properties();
-                    collectionProps.load(new FileInputStream(categoriesProps));
-
-                    File shoppifyCollectionJson = new File(exportPath.toFile(), enrichedProduct.code() + "-collection.json");
-
-                    Map<String,Object> collectMap = (Map<String, Object>) shoppifyColTemplate.get("collect");
-
-                    collectMap.put("collection_id", collectionProps.get("shoppifyId"));
-
-                    objectMapper.writerWithDefaultPrettyPrinter().writeValue(shoppifyCollectionJson, shoppifyColTemplate);
-
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (propertiesFile.exists()) {
+            properties.load(new FileReader(propertiesFile));
         }
 
+        Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
+
+        for (File enrichedJsonFile : enrichmentPath.toFile().listFiles()) {
+            try {
+                Product enrichedProduct = objectMapper
+                        .readValue(enrichedJsonFile, Product.class);
+
+                Map<String, Object> shopifyProduct = getShopifyProduct(enrichedProduct);
+
+                File shopifyProductFile = new File(exportPath.toFile(), enrichedProduct.code() + ".json");
+
+                if (shopifyProductFile.exists()) {
+
+                    JsonNode existingShoppifyProduct = objectMapper.readTree(shopifyProductFile);
+
+                    JsonNode newShoppifyProduct = objectMapper.readTree(objectMapper.writeValueAsString(shopifyProduct));
+
+                    if (!existingShoppifyProduct.equals(newShoppifyProduct)) {
+                        String shopifyProductId = (String) properties.get(enrichedProduct.code());
+                        update(shopifyProductId, shopifyProduct);
+                    }
+
+
+                } else {
+                    Map<String, Object> createdProduct = create(shopifyProduct);
+                    Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
+                    properties.put(enrichedProduct.code(), id.toString());
+                }
+
+                objectMapper.writeValue(shopifyProductFile, shopifyProduct);
+
+            } catch (IOException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
+        properties.store(new FileOutputStream(propertiesFile), "Updated");
+
     }
+
+    public Map<String, Object> getShopifyProduct(final Product product) {
+        Map<String, Object> shopifyProduct = new HashMap<>(1);
+
+        Map<String, Object> variantMap
+                = Map.of("price", product.price(),
+                "compare_at_price", product.discount());
+
+        List<Map<String, Object>> imagesList = new ArrayList<>(product.imageUrls().length);
+
+        for (int i = 0; i < product.imageUrls().length; i++) {
+            imagesList.add(Map.of("position", i + 1,
+                    "alt", product.title(),
+                    "src", product.imageUrls()[i]));
+        }
+
+        Map<String, Object> productMap
+                = Map.of("title", product.title(),
+                "body_html", product.description(),
+                "handle", product.code(),
+                "variants", List.of(variantMap),
+                "image", imagesList.get(0),
+                "images", imagesList);
+
+        shopifyProduct.put("product", productMap);
+
+        return shopifyProduct;
+    }
+
+    public Map<String, Object> getShopifyCollections(final Long productId, Properties collectionProps) {
+        Map<String, Object> shopifyCollection = new HashMap<>(2);
+
+        shopifyCollection.put("product_id", productId);
+
+        String collectionId = (String) collectionProps.get("shopify-id");
+        if (collectionId != null) {
+            shopifyCollection.put("collection_id", Long
+                    .parseLong(collectionId.trim()));
+        }
+
+        return Map.of("collect", shopifyCollection);
+    }
+
+    public Map<String, Object> create(Map<String, Object> shopifyProduct) throws IOException, InterruptedException {
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/products.json"))
+                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(shopifyProduct)))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        return objectMapper.readValue(response.body()
+                , new TypeReference<>() {
+                });
+    }
+
+    public Map<String, Object> update(String productId, Map<String, Object> shopifyProduct) throws IOException, InterruptedException {
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/products/" + productId + ".json"))
+                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(shopifyProduct)))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        return objectMapper.readValue(response.body()
+                , new TypeReference<>() {
+                });
+    }
+
 }

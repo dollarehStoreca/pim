@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -42,47 +42,32 @@ public abstract class ProductSource {
     }
 
     public void enrich() {
+        Arrays.stream(transformPath.toFile().listFiles(pathname -> pathname.getName().endsWith(".json")))
+                .parallel()
+                .forEach(transformedJsonFile -> {
+                    try {
+                        Optional<File> originalJsonFile = findOriginalProductJson(transformedJsonFile.getName());
 
-        try (Stream<Path> paths = Files.walk(transformPath)) {
-            List<Path> jsonFiles = paths
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().toLowerCase().endsWith(".json"))
-                    .toList();
+                        if (originalJsonFile.isPresent()) {
+                            Product originalProduct = objectMapper
+                                    .readValue(originalJsonFile.get(), Product.class);
 
-            jsonFiles.forEach(transformedJsonPath -> {
-                try {
+                            Product transformProduct = objectMapper
+                                    .readValue(transformedJsonFile, Product.class);
 
-                    Optional<File> originalJsonFile  = findOriginalProductJson(transformedJsonPath.toFile().getName());
+                            Product enrichedProduct = originalProduct.merge(transformProduct);
 
-                    if(originalJsonFile.isPresent()) {
+                            File enrichedProductFile = new File(enrichmentPath.toFile(),
+                                    originalJsonFile.get().getName());
 
-                        Product originalProduct = objectMapper
-                                .readValue(originalJsonFile.get(), Product.class);
+                            enrichedProductFile.getParentFile().mkdirs();
 
-                        Product transformProduct = objectMapper
-                                .readValue(transformedJsonPath.toFile(), Product.class);
-
-                        Product enrichedProduct = originalProduct.merge(transformProduct);
-
-                        File enrichedProductFile = new File(enrichmentPath.toFile(),
-                                transformedJsonPath.toString().replace(transformPath.toString(), ""));
-
-                        enrichedProductFile.getParentFile().mkdirs();
-
-                        Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
+                            Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
-
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-
-
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+                });
     }
 
     public abstract void browse() throws IOException, URISyntaxException;
@@ -92,7 +77,7 @@ public abstract class ProductSource {
 
         Path productJsonPath = new File(categoryDirPath.toFile(), product.code() + ".json").toPath();
 
-        if(productJsonPath.toFile().exists()) {
+        if (productJsonPath.toFile().exists()) {
             String productJsonTxt = objectMapper
                     .writeValueAsString(product);
             if (!productJsonTxt.equals(Files.readString(productJsonPath))) {
@@ -102,12 +87,26 @@ public abstract class ProductSource {
             }
         } else {
             productJsonPath.toFile().getParentFile().mkdirs();
-
             Files.writeString(productJsonPath,
                     objectMapper
                             .writeValueAsString(product));
-
             newProductConsumer.accept(product);
+        }
+    }
+
+    private Optional<File> findOriginalProductJson(String fileName) {
+        if (!Files.exists(path) || !Files.isDirectory(path)) {
+            return Optional.empty();
+        }
+
+        try (Stream<Path> paths = Files.walk(path)) {
+            return paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().equals(fileName))
+                    .map(Path::toFile)
+                    .findFirst();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Optional.empty();
         }
     }
 
@@ -116,8 +115,10 @@ public abstract class ProductSource {
 
         private final Class<? extends ProductSource> productSourceClass;
 
-        private Consumer<Product> newProductConsumer = p -> {};  // Default empty consumer
-        private Consumer<Product> modifiedProductConsumer = p -> {}; // Default empty consumer
+        private Consumer<Product> newProductConsumer = p -> {
+        };  // Default empty consumer
+        private Consumer<Product> modifiedProductConsumer = p -> {
+        }; // Default empty consumer
 
         public ProductSourceBuilder(Class<? extends ProductSource> productSourceClass) {
             this.productSourceClass = productSourceClass;
@@ -142,25 +143,6 @@ public abstract class ProductSource {
                 throw new RuntimeException("Failed to create ProductSource", e);
             }
         }
-
-
     }
-
-    private Optional<File> findOriginalProductJson(String fileName) {
-        if (!Files.exists(path) || !Files.isDirectory(path)) {
-            return Optional.empty();
-        }
-
-        try (Stream<Path> paths = Files.walk(path)) {
-            return paths.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().equals(fileName))
-                    .map(Path::toFile)
-                    .findFirst();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Optional.empty();
-        }
-    }
-
 
 }
