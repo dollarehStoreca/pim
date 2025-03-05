@@ -63,8 +63,9 @@ public class Shopify {
 
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        for (File enrichedJsonFile : enrichmentPath.toFile().listFiles()) {
+        for (File enrichedJsonFile : enrichmentPath.toFile().listFiles().subList(1, 4)) {
             try {
+
                 Product enrichedProduct = objectMapper
                         .readValue(enrichedJsonFile, Product.class);
 

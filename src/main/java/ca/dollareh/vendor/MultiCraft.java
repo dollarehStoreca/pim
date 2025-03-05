@@ -17,7 +17,7 @@ import java.util.function.Consumer;
 
 public class MultiCraft extends ProductSource {
 
-    public static final String BASE_URL = "https://multicraft.ca/";
+    public static final String BASE_URL = "https://multicraft.ca";
 
     MultiCraft(final Consumer<Product> newProductConsumer,
                final Consumer<Product> modifiedProductConsumer) {
@@ -30,12 +30,12 @@ public class MultiCraft extends ProductSource {
                 .timeout(45 * 1000)
                 .maxBodySize(5 * 1024 * 1024);
 
-        Document langingPage = session.newRequest("https://multicraft.ca/en")
+        Document langingPage = session.newRequest(BASE_URL +"/en")
                 .get();
 
         String code = langingPage.selectFirst("input[name=\"__RequestVerificationToken\"]").val();
 
-        session.newRequest("https://multicraft.ca/en/user/login")
+        session.newRequest(BASE_URL + "/en/user/login")
                 .data("UserName", System.getenv("MULTICRAFT_USER"))
                 .data("Password", System.getenv("MULTICRAFT_PW"))
                 .data("__RequestVerificationToken", code)
@@ -86,7 +86,6 @@ public class MultiCraft extends ProductSource {
                 throw new RuntimeException(e);
             }
         });
-
     }
 
     /**
