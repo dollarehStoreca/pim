@@ -39,7 +39,7 @@ public class Shopify {
     public Shopify(ProductSource productSource) {
         this.productSource = productSource;
 
-        baseUrl = System.getenv("SHOPIFY_BASE_UEL");
+        baseUrl = System.getenv("SHOPIFY_BASE_URL");
 
         exportPath = Path.of("workspace/export/" + getClass().getSimpleName() + "/" + productSource.getClass().getSimpleName());
 
@@ -63,7 +63,9 @@ public class Shopify {
 
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        for (File enrichedJsonFile : enrichmentPath.toFile().listFiles().subList(1, 4)) {
+        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles()[0]);
+
+        for (File enrichedJsonFile : enrichedJsonFiles) {
             try {
 
                 Product enrichedProduct = objectMapper
@@ -108,7 +110,8 @@ public class Shopify {
 
         Map<String, Object> variantMap
                 = Map.of("price", product.price(),
-                "compare_at_price", product.discount());
+                "compare_at_price", product.discount(),
+                "inventory_quantity", product.inventryQuantity());
 
         List<Map<String, Object>> imagesList = new ArrayList<>(product.imageUrls().length);
 
