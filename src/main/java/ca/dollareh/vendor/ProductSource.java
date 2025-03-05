@@ -80,10 +80,6 @@ public abstract class ProductSource {
 
         Path productJsonPath = new File(categoryDirPath.toFile(), product.code() + ".json").toPath();
 
-        for (String imageUrl : product.imageUrls()) {
-            downloadAsset(imageUrl);
-        }
-
         if (productJsonPath.toFile().exists()) {
             String productJsonTxt = objectMapper
                     .writeValueAsString(product);

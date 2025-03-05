@@ -53,7 +53,7 @@ public class Shopify {
 
     public void export() throws IOException {
 
-        this.productSource.enrich();
+        // this.productSource.enrich();
 
         File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
 
@@ -71,7 +71,6 @@ public class Shopify {
 
         for (File enrichedJsonFile : enrichedJsonFiles) {
             try {
-
                 Product enrichedProduct = objectMapper
                         .readValue(enrichedJsonFile, Product.class);
 
@@ -95,6 +94,8 @@ public class Shopify {
                     Map<String, Object> createdProduct = create(shopifyProduct);
                     Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
                     properties.put(enrichedProduct.code(), id.toString());
+
+                    createImages(id, enrichedProduct);
                 }
 
                 objectMapper.writeValue(shopifyProductFile, shopifyProduct);
@@ -103,7 +104,6 @@ public class Shopify {
                 throw new RuntimeException(e);
             }
         }
-
 
         properties.store(new FileOutputStream(propertiesFile), "Updated");
 
@@ -117,21 +117,11 @@ public class Shopify {
                 "compare_at_price", product.discount(),
                 "inventory_quantity", product.inventryQuantity());
 
-        List<Map<String, Object>> imagesList = new ArrayList<>(product.imageUrls().length);
-
-        for (int i = 0; i < product.imageUrls().length; i++) {
-            imagesList.add(Map.of("position", i + 1,
-                    "alt", product.title(),
-                    "src", product.imageUrls()[i]));
-        }
-
         Map<String, Object> productMap
                 = Map.of("title", product.title(),
                 "body_html", product.description(),
                 "handle", product.code(),
-                "variants", List.of(variantMap),
-                "image", imagesList.get(0),
-                "images", imagesList);
+                "variants", List.of(variantMap));
 
         shopifyProduct.put("product", productMap);
 
@@ -151,6 +141,17 @@ public class Shopify {
 
         return Map.of("collect", shopifyCollection);
     }
+
+    public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
+
+        for (String imageUrl : product.imageUrls()) {
+            File imageFile = productSource.downloadAsset(imageUrl);
+
+            createImage(productId, imageFile.toPath());
+        }
+
+    }
+
 
     public Map<String, Object> create(Map<String, Object> shopifyProduct) throws IOException, InterruptedException {
 
@@ -213,10 +214,6 @@ public class Shopify {
 
         // Send request and get response
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        // Print response
-        System.out.println("Response Code: " + response.statusCode());
-        System.out.println("Response Body: " + response.body());
     }
 
 }
