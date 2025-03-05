@@ -115,12 +115,20 @@ public class Shopify {
         Map<String, Object> variantMap
                 = Map.of("price", product.price(),
                 "compare_at_price", product.discount(),
-                "inventory_quantity", product.inventryQuantity());
+                "inventory_quantity", product.inventryQuantity(),
+                "title", product.title(),
+                "inventory_policy", "deny" ,
+                "inventory_management","shopify",
+                "option1" ,product.title(),
+                "fulfillment_service", "manual",
+                "taxable", true,
+                "requires_shipping", true);
 
         Map<String, Object> productMap
                 = Map.of("title", product.title(),
                 "body_html", product.description(),
                 "handle", product.code(),
+                "vendor" , "Dollareh",
                 "variants", List.of(variantMap));
 
         shopifyProduct.put("product", productMap);
