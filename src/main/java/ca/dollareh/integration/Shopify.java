@@ -17,8 +17,10 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -182,6 +184,37 @@ public class Shopify {
         return objectMapper.readValue(response.body()
                 , new TypeReference<>() {
                 });
+    }
+
+    private void createImage(Long productId, Path productImage) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+
+        // Convert Image to Base64
+        String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(productImage));
+
+        // Create JSON request body
+        String requestBody = """
+        {
+          "image": {
+            "attachment": "%s"
+          }
+        }
+        """.formatted(base64Image);
+
+        // Build HTTP request
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/products/" + productId + "/images.json"))
+                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .build();
+
+        // Send request and get response
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        // Print response
+        System.out.println("Response Code: " + response.statusCode());
+        System.out.println("Response Body: " + response.body());
     }
 
 }
