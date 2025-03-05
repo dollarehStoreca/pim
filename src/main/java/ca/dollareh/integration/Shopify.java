@@ -63,6 +63,8 @@ public class Shopify {
             properties.load(new FileReader(propertiesFile));
         }
 
+        Path assetsPath = Path.of("workspace/extracted/" + productSource.getClass().getSimpleName() +"/assets/");
+
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
         List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles()[0]);
