@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -72,10 +73,16 @@ public abstract class ProductSource {
 
     public abstract void browse() throws IOException, URISyntaxException;
 
+    public abstract File downloadAsset(final String assetUrl) throws IOException;
+
     protected void onProductDiscovery(final Path categoryDirPath,
                                       final Product product) throws IOException {
 
         Path productJsonPath = new File(categoryDirPath.toFile(), product.code() + ".json").toPath();
+
+        for (String imageUrl : product.imageUrls()) {
+            downloadAsset(imageUrl);
+        }
 
         if (productJsonPath.toFile().exists()) {
             String productJsonTxt = objectMapper

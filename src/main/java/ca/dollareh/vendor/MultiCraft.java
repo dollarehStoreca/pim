@@ -10,6 +10,8 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
@@ -26,6 +28,19 @@ public class MultiCraft extends ProductSource {
 
     @Override
     public void browse() throws IOException, URISyntaxException {
+        Connection session = getSession();
+
+        browse(path, null, session);
+
+        logout(session);
+    }
+
+    private static void logout(final Connection session) throws IOException {
+        session.newRequest(BASE_URL + "/en/user/logout")
+                .get();
+    }
+
+    private static Connection getSession() throws IOException {
         Connection session = Jsoup.newSession()
                 .timeout(45 * 1000)
                 .maxBodySize(5 * 1024 * 1024);
@@ -40,11 +55,26 @@ public class MultiCraft extends ProductSource {
                 .data("Password", System.getenv("MULTICRAFT_PW"))
                 .data("__RequestVerificationToken", code)
                 .post();
+        return session;
+    }
 
-        browse(path, null, session);
+    @Override
+    public File downloadAsset(final String assetUrl) throws IOException {
+        Connection session = getSession();
 
-        session.newRequest(BASE_URL + "/en/user/logout")
-                .get();
+        String image = assetUrl.replace(BASE_URL, "");
+
+        Connection.Response resultImageResponse = session.newRequest(assetUrl).ignoreContentType(true).execute();
+        // output here
+        Path assetsDir = Path.of("workspace/extracted/"+ getClass().getSimpleName() +"/assets/" );
+        File imageFile = Path.of(assetsDir +"/" + image).toFile();
+        imageFile.getParentFile().mkdirs();
+        FileOutputStream out = new FileOutputStream(imageFile);
+        out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
+        out.close();
+        logout(session);
+
+        return imageFile;
     }
 
 
