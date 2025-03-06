@@ -80,9 +80,9 @@ public abstract class ProductSource {
     protected void onProductDiscovery(final List<String> categories,
                                       final Product product) throws IOException {
 
-        String category = categories.isEmpty() ? "" : "-" + categories.stream().collect(Collectors.joining("-"));
+        String category = categories.isEmpty() ? "" : categories.stream().collect(Collectors.joining("-"));
 
-        Path productJsonPath = new File(path.toFile(), product.code() + category + ".json").toPath();
+        Path productJsonPath = new File(path.toFile(), product.code() + "-" + category + ".json").toPath();
 
         if (productJsonPath.toFile().exists()) {
             String productJsonTxt = objectMapper
