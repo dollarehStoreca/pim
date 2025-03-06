@@ -62,7 +62,6 @@ public abstract class ProductSource {
                                     originalProduct.code() + ".csv");
 
                             Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
-                                    this.getClass().getSimpleName().toLowerCase() + "-" +
                                     file.getName()
                                             .replaceFirst((originalProduct.code()+"-"),"")
                                             .replaceFirst(".json","").toLowerCase()
