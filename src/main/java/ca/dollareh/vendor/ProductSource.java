@@ -49,11 +49,25 @@ public abstract class ProductSource {
                 .parallel()
                 .forEach(transformedJsonFile -> {
                     try {
-                        Optional<File> originalJsonFile = findOriginalProductJson(transformedJsonFile.getName().replaceAll(".json",""));
+                        List<File> originalJsonFiles = findOriginalProductJson(transformedJsonFile.getName().replaceAll(".json",""));
 
-                        if (originalJsonFile.isPresent()) {
+                        if (!originalJsonFiles.isEmpty()) {
+
+                            File originalJsonFile = originalJsonFiles.get(0);
+
                             Product originalProduct = objectMapper
-                                    .readValue(originalJsonFile.get(), Product.class);
+                                    .readValue(originalJsonFile, Product.class);
+
+                            File enrichedProductCollectionsFile = new File(enrichmentPath.toFile(),
+                                    originalProduct.code() + ".csv");
+
+                            Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
+                                    this.getClass().getSimpleName().toLowerCase() + "-" +
+                                    file.getName()
+                                            .replaceFirst((originalProduct.code()+"-"),"")
+                                            .replaceFirst(".json","").toLowerCase()
+
+                            ).collect(Collectors.joining("\n")));
 
                             Product transformProduct = objectMapper
                                     .readValue(transformedJsonFile, Product.class);
@@ -61,7 +75,7 @@ public abstract class ProductSource {
                             Product enrichedProduct = originalProduct.merge(transformProduct);
 
                             File enrichedProductFile = new File(enrichmentPath.toFile(),
-                                    originalJsonFile.get().getName());
+                                    originalProduct.code() + ".json");
 
                             enrichedProductFile.getParentFile().mkdirs();
 
@@ -101,14 +115,10 @@ public abstract class ProductSource {
         }
     }
 
-    private Optional<File> findOriginalProductJson(String code) {
-        if (!Files.exists(path) || !Files.isDirectory(path)) {
-            return Optional.empty();
-        }
-
+    private List<File> findOriginalProductJson(String code) {
         File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+'-'));
 
-        return (files != null && files.length > 1) ? Optional.of(files[0]) : Optional.empty() ;
+        return List.of(files) ;
     }
 
     // Builder class
