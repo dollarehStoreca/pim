@@ -49,7 +49,7 @@ public abstract class ProductSource {
                 .parallel()
                 .forEach(transformedJsonFile -> {
                     try {
-                        Optional<File> originalJsonFile = findOriginalProductJson(transformedJsonFile.getName());
+                        Optional<File> originalJsonFile = findOriginalProductJson(transformedJsonFile.getName().replaceAll(".json",""));
 
                         if (originalJsonFile.isPresent()) {
                             Product originalProduct = objectMapper
@@ -101,20 +101,14 @@ public abstract class ProductSource {
         }
     }
 
-    private Optional<File> findOriginalProductJson(String fileName) {
+    private Optional<File> findOriginalProductJson(String code) {
         if (!Files.exists(path) || !Files.isDirectory(path)) {
             return Optional.empty();
         }
 
-        try (Stream<Path> paths = Files.walk(path)) {
-            return paths.filter(Files::isRegularFile)
-                    .filter(path -> path.getFileName().toString().equals(fileName))
-                    .map(Path::toFile)
-                    .findFirst();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return Optional.empty();
-        }
+        File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+'-'));
+
+        return (files != null && files.length > 1) ? Optional.of(files[0]) : Optional.empty() ;
     }
 
     // Builder class

@@ -21,10 +21,10 @@ class ProductSourceTest {
                 })
                 .build();
 
-        productSource.browse();
+        // productSource.browse();
 
 
-        //  productSource.enrich();
+        productSource.enrich();
 
     }
 
