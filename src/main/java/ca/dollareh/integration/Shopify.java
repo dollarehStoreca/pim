@@ -19,8 +19,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +53,15 @@ public class Shopify {
 
     public void export() throws IOException {
 
+        Map<Long, Map<String, Object>> collectionsMap =  getShopifyCollection();
+
+        collectionsMap.entrySet().stream().filter(longMapEntry -> longMapEntry.getKey() == 329128738986L)
+                .parallel().forEach(longMapEntry -> {
+
+            System.out.println(getMetafields(longMapEntry.getKey()));
+
+        });
+
         // this.productSource.enrich();
 
         File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
@@ -63,7 +72,6 @@ public class Shopify {
             properties.load(new FileReader(propertiesFile));
         }
 
-        Path assetsPath = Path.of("workspace/extracted/" + productSource.getClass().getSimpleName() +"/assets/");
 
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
@@ -136,7 +144,7 @@ public class Shopify {
         return shopifyProduct;
     }
 
-    public Map<String, Object> getShopifyCollections(final Long productId, Properties collectionProps) {
+    public Map<String, Object> getShopifyCollectionAssociation(final Long productId, Properties collectionProps) {
         Map<String, Object> shopifyCollection = new HashMap<>(2);
 
         shopifyCollection.put("product_id", productId);
@@ -178,6 +186,79 @@ public class Shopify {
                 , new TypeReference<>() {
                 });
     }
+
+    /**
+     * Gets all the shopify collections as Map.
+     * Key os the Map is Collection Id
+     * Value of the Map is Collection Object as Map<String, Object>
+     * @return collectionsMap
+     */
+    private Map<Long, Map<String, Object>> getShopifyCollection() {
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl  + "/custom_collections.json"))
+                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("Content-Type", "application/json")
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch Shopify collections: " + response.body());
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
+                    new TypeReference<>() {});
+
+            Map<Long, Map<String, Object>> collectionsMap = new HashMap<>();
+            List<Map<String, Object>> collections = responseBody.get("custom_collections");
+
+            if (collections != null) {
+                for (Map<String, Object> collection : collections) {
+                    Long id = ((Number) collection.get("id")).longValue();
+                    collectionsMap.put(id, collection);
+                }
+            }
+
+            return collectionsMap;
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching Shopify collections", e);
+        }
+    }
+
+    private List<Map<String, Object>> getMetafields(Long collectionId) {
+        HttpClient client = HttpClient.newHttpClient();
+
+        String metafieldsUrl = baseUrl + "/collections/" + collectionId + "/metafields.json";
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(metafieldsUrl))
+                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("Content-Type", "application/json")
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch metafields for collection " + collectionId);
+            }
+
+            Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
+                    new TypeReference<>() {
+                    });
+
+            return responseBody.getOrDefault("metafields", Collections.emptyList());
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching metafields for collection " + collectionId, e);
+        }
+    }
+
 
     public Map<String, Object> update(String productId, Map<String, Object> shopifyProduct) throws IOException, InterruptedException {
 
