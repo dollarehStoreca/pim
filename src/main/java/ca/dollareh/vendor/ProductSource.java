@@ -11,8 +11,10 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public abstract class ProductSource {
@@ -75,10 +77,12 @@ public abstract class ProductSource {
 
     public abstract File downloadAsset(final String assetUrl) throws IOException;
 
-    protected void onProductDiscovery(final Path categoryDirPath,
+    protected void onProductDiscovery(final List<String> categories,
                                       final Product product) throws IOException {
 
-        Path productJsonPath = new File(categoryDirPath.toFile(), product.code() + ".json").toPath();
+        String category = categories.isEmpty() ? "" : "-" + categories.stream().collect(Collectors.joining("-"));
+
+        Path productJsonPath = new File(path.toFile(), product.code() + category + ".json").toPath();
 
         if (productJsonPath.toFile().exists()) {
             String productJsonTxt = objectMapper

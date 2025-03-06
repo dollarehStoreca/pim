@@ -15,6 +15,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class MultiCraft extends ProductSource {
@@ -30,7 +32,7 @@ public class MultiCraft extends ProductSource {
     public void browse() throws IOException, URISyntaxException {
         Connection session = getSession();
 
-        browse(path, null, session);
+        browse(new ArrayList<>(), session);
 
         logout(session);
     }
@@ -78,15 +80,26 @@ public class MultiCraft extends ProductSource {
     }
 
 
-    public void browse(final Path currentDir, String category, Connection session) throws IOException, URISyntaxException {
+    public void browse(final List<String> categoryPaths, Connection session) throws IOException, URISyntaxException {
 
-        Document document = getHTMLDocument(session, "/en/brand" + (category == null ? "" : "/subbrands?code=" + category));
+        Document document = getHTMLDocument(session, "/en/brand" + (categoryPaths.isEmpty()? "" : "/subbrands?code=" + categoryPaths.getLast()));
+
+        // Get Products
+
+        Elements skusEls = document.select("#skusCards>li");
+
+        skusEls.stream().parallel().forEach(skusEl -> {
+            try {
+                onProductDiscovery(categoryPaths,
+                        getProduct(skusEl.selectFirst(".summary-id").text().trim(), session));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        // Get Sub Categories
 
         Elements brandsEls = document.select("ul.brandsList>li>a");
-
-        Path categoryDir = category == null ? currentDir : new File(currentDir.toFile(), category).toPath();
-
-        categoryDir.toFile().mkdirs();
 
         for (Element brandsAnchorEl : brandsEls) {
             new URIBuilder(brandsAnchorEl.attr("href"))
@@ -97,25 +110,14 @@ public class MultiCraft extends ProductSource {
                     .map(NameValuePair::getValue)
                     .ifPresent(code -> {
                         try {
-                            browse(categoryDir, code.trim(), session);
+                            List<String> subCategoryPath = new ArrayList<>(categoryPaths);
+                            subCategoryPath.add(code.trim());
+                            browse(subCategoryPath, session);
                         } catch (IOException | URISyntaxException e) {
                             throw new RuntimeException(e);
                         }
                     });
         }
-
-        Elements skusEls = document.select("#skusCards>li");
-
-        skusEls.stream().parallel().forEach(skusEl -> {
-            try {
-                onProductDiscovery(categoryDir,
-                        getProduct(
-                                skusEl.selectFirst(".summary-id").text(),
-                                session));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
     }
 
     /**
