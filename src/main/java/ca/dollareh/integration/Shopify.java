@@ -3,6 +3,7 @@ package ca.dollareh.integration;
 import ca.dollareh.core.model.Product;
 import ca.dollareh.vendor.ProductSource;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,6 +50,40 @@ public class Shopify {
 
         objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+    }
+
+    public Map<String, Object> createCollection(String title,List<String> downSteamPaths) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+
+        Map<String, Object> collectionMap = new HashMap();
+        collectionMap.put("title", title);
+
+        if( downSteamPaths != null && !downSteamPaths.isEmpty()) {
+            Map<String, Object> metaFoiledsMap = new HashMap();
+            metaFoiledsMap.put("key", "downstream_collection_paths");
+            metaFoiledsMap.put("type", "list.single_line_text_field");
+            metaFoiledsMap.put("namespace", "vendor");
+            metaFoiledsMap.put("value", objectMapper.writeValueAsString(downSteamPaths));
+
+            collectionMap.put("metafields", List.of(metaFoiledsMap));
+        }
+
+
+
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(baseUrl + "/custom_collections.json"))
+                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(objectMapper
+                        .writeValueAsString(Map.of("custom_collection", collectionMap))))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        return objectMapper.readValue(response.body()
+                , new TypeReference<>() {
+                });
     }
 
     public void export() throws IOException {
