@@ -5,7 +5,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -13,13 +12,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public abstract class ProductSource {
 
+    public static final String COLLECTION_SEPARATOR = "-";
     protected final Path path = Path.of("workspace/extracted/" + getClass().getSimpleName());
 
     protected final Path transformPath = Path.of("workspace/transform/" + getClass().getSimpleName());
@@ -66,7 +64,7 @@ public abstract class ProductSource {
 
                             Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
                                     file.getName()
-                                            .replaceFirst((originalProduct.code()+"-"),"")
+                                            .replaceFirst((originalProduct.code()+ COLLECTION_SEPARATOR),"")
                                             .replaceFirst(".json","").toLowerCase()
 
                             ).collect(Collectors.joining("\n")));
@@ -96,9 +94,10 @@ public abstract class ProductSource {
     protected void onProductDiscovery(final List<String> categories,
                                       final Product product) throws IOException {
 
-        String category = categories.isEmpty() ? "" : categories.stream().collect(Collectors.joining("-"));
+        String category = categories.isEmpty() ? "" : categories.stream()
+                .collect(Collectors.joining(COLLECTION_SEPARATOR));
 
-        Path productJsonPath = new File(path.toFile(), product.code() + "-" + category + ".json").toPath();
+        Path productJsonPath = new File(path.toFile(), product.code() + COLLECTION_SEPARATOR + category + ".json").toPath();
 
         if (productJsonPath.toFile().exists()) {
             String productJsonTxt = objectMapper
@@ -118,24 +117,24 @@ public abstract class ProductSource {
     }
 
 
-    public List<String>  getCollection(String code) {
+    public List<List<String>>  getCollection(String code) {
 
-        File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+'-'));
+        File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+COLLECTION_SEPARATOR));
 
         if(files == null || files.length == 0) {
             return new ArrayList<>();
         }
 
         return List.of(files).stream().map(file ->
-                        this.getClass().getSimpleName() + "-" +
-                        file.getName()
-                        .replaceFirst(code + "-","")
-                        .replaceFirst(".json",""))
+        List.of(file.getName()
+                .replaceFirst(code + COLLECTION_SEPARATOR,"")
+                .replaceFirst(".json","").split(COLLECTION_SEPARATOR)))
+
                 .collect(Collectors.toList());
     }
 
     private List<File> findOriginalProductJson(String code) {
-        File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+'-'));
+        File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+COLLECTION_SEPARATOR));
 
         return List.of(files) ;
     }
