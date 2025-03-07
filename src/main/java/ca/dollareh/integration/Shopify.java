@@ -160,8 +160,9 @@ public class Shopify {
 
                     createImages(id, enrichedProduct);
 
-//                    List<String> originalCollectionPath = productSource.getCollection(enrichedProduct.code());
-//                    if (!originalCollectionPath.isEmpty()){
+                    List<List<String>> originalCollectionPath = productSource.getCollection(enrichedProduct.code());
+
+                    if (!originalCollectionPath.isEmpty()){
 //                        originalCollectionPath.forEach(path -> {
 //                            Long collectionId = reverseMapping.get(path);
 //                            //System.out.println(collectionId);
@@ -171,7 +172,7 @@ public class Shopify {
 //                                System.out.println(path + " returns collection id " + collectionId);
 //                            }
 //                        });
-//                    }
+                    }
                 }
 
                 objectMapper.writeValue(shopifyProductFile, shopifyProduct);

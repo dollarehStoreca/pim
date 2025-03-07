@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class CollectionMakerTest {
@@ -43,7 +45,6 @@ public class CollectionMakerTest {
 
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
-
 
         Map<String, List<List<String>>> cMap = new HashMap<>();
 
@@ -104,9 +105,6 @@ public class CollectionMakerTest {
                         cMap.put(categoryValue, consolidated);
                     }
 
-
-
-
                     subSubCategory = newValue;
                 }
 
@@ -124,13 +122,27 @@ public class CollectionMakerTest {
 
             System.out.println("------------------------------------------\n\n");
 
-            System.out.println("Category : " + stringStringEntry.getKey());
+            System.out.println("Shopify Collection : " + stringStringEntry.getKey());
+
+            SortedSet<String> colletionPaths = new TreeSet<>();
 
             stringStringEntry.getValue().forEach(strings -> {
+                String path = strings.stream().collect(Collectors.joining("-"));
 
-                System.out.println(strings.stream().collect(Collectors.joining("-")));
+                if(!path.trim().isEmpty()) {
+                    colletionPaths.add("MultiCraft" + "-" + path);
+                }
 
             });
+
+
+            try {
+                shopify.createCollection(stringStringEntry.getKey(), colletionPaths.stream().toList());
+            } catch (IOException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+
 
             System.out.println("\n\n------------------------------------------");
 
