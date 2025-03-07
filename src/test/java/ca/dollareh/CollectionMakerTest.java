@@ -66,47 +66,7 @@ public class CollectionMakerTest {
 
                 newValue = row.getCell(5).getStringCellValue().trim();
 
-                if(!newValue.isEmpty() && !newValue.equals(subSubCategory)) {
 
-                    List<List<String>> categories = productSource.getCollection(code);
-                    cMap.put(newValue, categories);
-
-                    List<List<String>> subCtegories = new ArrayList<>(categories);
-                    subCtegories = subCtegories.stream().map(strings -> {
-                        List<String> allExceptLast = new ArrayList<>();
-                        for (int j = 0; j < strings.size() -1; j++) {
-                            allExceptLast.add(strings.get(j));
-                        }
-                        return allExceptLast;
-                    }).toList();
-
-                    if(cMap.get(subCategoryValue) == null) {
-                        cMap.put(subCategoryValue, subCtegories);
-                    } else {
-                        List<List<String>> consolidated = new ArrayList<>(cMap.get(subCategoryValue));
-                        consolidated.addAll(subCtegories);
-                        cMap.put(subCategoryValue, consolidated);
-                    }
-
-                    List<List<String>> rootCtegories = new ArrayList<>(subCtegories);
-                    rootCtegories = rootCtegories.stream().map(strings -> {
-                        List<String> allExceptLast = new ArrayList<>();
-                        for (int j = 0; j < strings.size() -1; j++) {
-                            allExceptLast.add(strings.get(j));
-                        }
-                        return allExceptLast;
-                    }).toList();
-
-                    if(cMap.get(categoryValue) == null) {
-                        cMap.put(categoryValue, rootCtegories);
-                    } else {
-                        List<List<String>> consolidated = new ArrayList<>(cMap.get(categoryValue));
-                        consolidated.addAll(rootCtegories);
-                        cMap.put(categoryValue, consolidated);
-                    }
-
-                    subSubCategory = newValue;
-                }
 
 
 
@@ -136,11 +96,8 @@ public class CollectionMakerTest {
             });
 
 
-            try {
-                shopify.createCollection(stringStringEntry.getKey(), colletionPaths.stream().toList());
-            } catch (IOException | InterruptedException e) {
-                throw new RuntimeException(e);
-            }
+            System.out.println(colletionPaths.stream().toList());
+
 
 
 
