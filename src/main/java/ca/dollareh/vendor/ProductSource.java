@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -112,6 +113,23 @@ public abstract class ProductSource {
                             .writeValueAsString(product));
             newProductConsumer.accept(product);
         }
+    }
+
+
+    public List<String>  getCollection(String code) {
+
+        File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+'-'));
+
+        if(files == null || files.length == 0) {
+            return new ArrayList<>();
+        }
+
+        return List.of(files).stream().map(file ->
+                        this.getClass().getSimpleName() + "-" +
+                        file.getName()
+                        .replaceFirst(code + "-","")
+                        .replaceFirst(".json",""))
+                .collect(Collectors.toList());
     }
 
     private List<File> findOriginalProductJson(String code) {
