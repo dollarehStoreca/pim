@@ -1,4 +1,4 @@
-@baseUrl = https://nu1ayu-dh.myshopify.com/admin/api/2025-01
+@baseUrl = https://0s7yfz-a9.myshopify.com/admin/api/2025-01
 @accessToken = xxxx
 
 ### Create Product
@@ -63,6 +63,32 @@ X-Shopify-Access-Token: {{accessToken}}
   }
 }
 ###
+
+
+### Create Collection
+
+POST {{baseUrl}}/custom_collections.json HTTP/1.1
+Content-Type: application/json
+X-Shopify-Access-Token: {{accessToken}}
+
+{
+  "custom_collection": {
+    "title": "Macbooks23",
+    "metafields": [
+      {
+        "key": "downstream_collection_paths",
+        "type": "list.single_line_text_field",
+        "namespace": "vendor",
+        "value": "[ \"Value 1\", \"value 2\" ]"
+
+      }
+    ]
+  }
+}
+
+
+###
+
 ### Attach collection 1
 POST {{baseUrl}}/collects.json HTTP/1.1
 Content-Type: application/json
