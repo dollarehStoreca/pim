@@ -14,10 +14,11 @@ import org.junit.jupiter.api.Test;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.SortedSet;
-import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 public class CollectionMakerTest {
     @Test
@@ -43,19 +44,73 @@ public class CollectionMakerTest {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-        SortedSet<String> categories = new TreeSet<>();
 
-        Map<String, String> SubCategories = new HashMap<>();
+        Map<String, List<List<String>>> cMap = new HashMap<>();
+
+        String subSubCategory = "";
 
         int i = 0;
+        String newValue;
+
+        String categoryValue ;
+
+        String subCategoryValue ;
+
         for (Row row : sheet) {
             if (i != 0) {
-                String code = row.getCell(1).getStringCellValue();
+                String code = row.getCell(1).getStringCellValue().trim();
 
-                categories.add(row.getCell(3).getStringCellValue().trim());
-                categories.add(row.getCell(4).getStringCellValue().trim());
+                categoryValue = row.getCell(3).getStringCellValue().trim();
+                subCategoryValue = row.getCell(4).getStringCellValue().trim();
 
-                SubCategories.put(row.getCell(5).getStringCellValue().trim(), code);
+                newValue = row.getCell(5).getStringCellValue().trim();
+
+                if(!newValue.isEmpty() && !newValue.equals(subSubCategory)) {
+
+                    List<List<String>> categories = productSource.getCollection(code);
+                    cMap.put(newValue, categories);
+
+                    List<List<String>> subCtegories = new ArrayList<>(categories);
+                    subCtegories = subCtegories.stream().map(strings -> {
+                        List<String> allExceptLast = new ArrayList<>();
+                        for (int j = 0; j < strings.size() -1; j++) {
+                            allExceptLast.add(strings.get(j));
+                        }
+                        return allExceptLast;
+                    }).toList();
+
+                    if(cMap.get(subCategoryValue) == null) {
+                        cMap.put(subCategoryValue, subCtegories);
+                    } else {
+                        List<List<String>> consolidated = new ArrayList<>(cMap.get(subCategoryValue));
+                        consolidated.addAll(subCtegories);
+                        cMap.put(subCategoryValue, consolidated);
+                    }
+
+                    List<List<String>> rootCtegories = new ArrayList<>(subCtegories);
+                    rootCtegories = rootCtegories.stream().map(strings -> {
+                        List<String> allExceptLast = new ArrayList<>();
+                        for (int j = 0; j < strings.size() -1; j++) {
+                            allExceptLast.add(strings.get(j));
+                        }
+                        return allExceptLast;
+                    }).toList();
+
+                    if(cMap.get(categoryValue) == null) {
+                        cMap.put(categoryValue, rootCtegories);
+                    } else {
+                        List<List<String>> consolidated = new ArrayList<>(cMap.get(categoryValue));
+                        consolidated.addAll(rootCtegories);
+                        cMap.put(categoryValue, consolidated);
+                    }
+
+
+
+
+                    subSubCategory = newValue;
+                }
+
+
 
             }
             i++;
@@ -65,13 +120,20 @@ public class CollectionMakerTest {
 //            System.out.println(category);
 //        }
 
-        SubCategories.entrySet().forEach(stringStringEntry -> {
-            if(!stringStringEntry.getKey().trim().isEmpty()) {
+        cMap.entrySet().forEach(stringStringEntry -> {
 
-                System.out.println(stringStringEntry);
+            System.out.println("------------------------------------------\n\n");
 
-                System.out.println(productSource.getCollection(stringStringEntry.getValue()));
-            }
+            System.out.println("Category : " + stringStringEntry.getKey());
+
+            stringStringEntry.getValue().forEach(strings -> {
+
+                System.out.println(strings.stream().collect(Collectors.joining("-")));
+
+            });
+
+            System.out.println("\n\n------------------------------------------");
+
         });
 
     }
