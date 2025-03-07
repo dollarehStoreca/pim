@@ -16,6 +16,7 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -23,6 +24,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
@@ -195,10 +197,18 @@ public class Shopify {
 
             } else {
                 Map<String, Object> createdProduct = create(shopifyProduct);
-                Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
-                properties.put(enrichedProduct.code(), id.toString());
 
-                createImages(id, enrichedProduct);
+                if (createdProduct.get("product") != null ) {
+                    Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
+                    if(id == null) {
+                        System.out.println("Unable to create product : " + enrichedProduct.code());
+                    } else {
+                        properties.put(enrichedProduct.code(), id.toString());
+
+                        createImages(id, enrichedProduct);
+                    }
+                }
+
 
                 List<List<String>> originalCategories = productSource.getCollection(enrichedProduct.code());
 
@@ -257,7 +267,7 @@ public class Shopify {
 
         Map<String, Object> productMap
                 = Map.of("title", product.title(),
-                "body_html", product.description(),
+                "body_html", product.description() == null ? "description" : product.description(),
                 "handle", product.code(),
                 "vendor" , "Dollareh",
                 "variants", List.of(variantMap));
@@ -300,12 +310,17 @@ public class Shopify {
     }
 
     public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
-
-        for (String imageUrl : product.imageUrls()) {
-            File imageFile = productSource.downloadAsset(imageUrl);
-
-            createImage(productId, imageFile.toPath());
-        }
+        Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
+            try {
+                File imageFile = productSource.downloadAsset(imageUrl);
+                createImage(productId, imageFile.toPath());
+            } catch (SocketTimeoutException e) {
+                System.out.println("Unable to Upload Image for " + productId);
+            }
+            catch (IOException | InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
 
     }
 
