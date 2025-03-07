@@ -22,15 +22,7 @@ class ShopifyTest {
                 })
                 .build();
 
-        System.out.println(new Shopify(productSource).createCollection("Electronics", List.of("SS")));
-
-        System.out.println(new Shopify(productSource).createCollection("Electronics 2", null));
-
-        System.out.println(new Shopify(productSource).createCollection("Electronics 3", new ArrayList<>()));
-        ;
-
-        // new Shopify(productSource).export();
-        // new MultiCraft().downloadImage("https://multicraft.ca/pics/01/061542172868.jpg");
+        new Shopify(productSource).export();
     }
 
 }

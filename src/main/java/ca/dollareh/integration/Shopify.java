@@ -68,9 +68,6 @@ public class Shopify {
             collectionMap.put("metafields", List.of(metaFoiledsMap));
         }
 
-
-
-
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + "/custom_collections.json"))
                 .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
@@ -88,16 +85,37 @@ public class Shopify {
 
     public void export() throws IOException {
 
+        this.productSource.enrich();
+
         Map<Long, Map<String, Object>> collectionsMap =  getShopifyCollection();
 
-        collectionsMap.entrySet().stream().filter(longMapEntry -> longMapEntry.getKey() == 329128738986L)
-                .parallel().forEach(longMapEntry -> {
+        Map<String, Long> reverseMapping = new HashMap<>();
 
-            System.out.println(getMetafields(longMapEntry.getKey()));
+        collectionsMap.entrySet().stream().forEach(longMapEntry -> {
+            List<Map<String, Object>> metaFields = getMetafields(longMapEntry.getKey());
+            if(!metaFields.isEmpty()) {
+                metaFields.stream()
+                        .filter(metaFieldMap -> metaFieldMap.get("key").equals("downstream_collection_paths"))
+                        .forEach(metaFieldMap -> {
+
+                            Object value = metaFieldMap.get("value");
+
+
+                            List<String> paths = null;
+                            try {
+                                paths = objectMapper.readerForListOf(String.class).readValue(metaFieldMap.get("value").toString());
+                                if(!paths.isEmpty()) {
+                                    reverseMapping.put(paths.get(0), longMapEntry.getKey());
+                                }
+                            } catch (JsonProcessingException e) {
+                                throw new RuntimeException(e);
+                            }
+
+
+                        });
+            }
 
         });
-
-        // this.productSource.enrich();
 
         File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
 
@@ -110,10 +128,12 @@ public class Shopify {
 
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles()[0]);
+        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
 
         for (File enrichedJsonFile : enrichedJsonFiles) {
             try {
+                System.out.println(enrichedJsonFile);
+
                 Product enrichedProduct = objectMapper
                         .readValue(enrichedJsonFile, Product.class);
 
@@ -139,6 +159,19 @@ public class Shopify {
                     properties.put(enrichedProduct.code(), id.toString());
 
                     createImages(id, enrichedProduct);
+
+                    List<String> originalCollectionPath = productSource.getCollection(enrichedProduct.code());
+                    if (!originalCollectionPath.isEmpty()){
+                        originalCollectionPath.forEach(path -> {
+                            Long collectionId = reverseMapping.get(path);
+                            //System.out.println(collectionId);
+                            if(collectionId == null){
+                                System.out.println(path + " not found");
+                            } else {
+                                System.out.println(path + " returns collection id " + collectionId);
+                            }
+                        });
+                    }
                 }
 
                 objectMapper.writeValue(shopifyProductFile, shopifyProduct);

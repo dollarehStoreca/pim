@@ -62,6 +62,8 @@ public abstract class ProductSource {
                             File enrichedProductCollectionsFile = new File(enrichmentPath.toFile(),
                                     originalProduct.code() + ".csv");
 
+                            enrichedProductCollectionsFile.getParentFile().mkdirs();
+
                             Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
                                     file.getName()
                                             .replaceFirst((originalProduct.code()+"-"),"")
