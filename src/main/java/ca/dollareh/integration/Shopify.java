@@ -318,7 +318,7 @@ public class Shopify {
                 System.out.println("Unable to Upload Image for " + productId);
             }
             catch (IOException | InterruptedException e) {
-                throw new RuntimeException(e);
+                System.out.println("Unable to Upload Image for " + productId);
             }
         });
 
