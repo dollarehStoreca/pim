@@ -1,11 +1,14 @@
 package ca.dollareh.core.model;
 
-public record Product(String code,
-                      String title,
-                      String description,
+import jakarta.validation.constraints.NotNull;
+
+public record Product(
+        @NotNull(message = "Code not be null") String code,
+        @NotNull(message = "Title not be null") String title,
+        @NotNull(message = "Description not be null") String description,
                       Long upc,
                       Integer inventryQuantity,
-                      Float price,
+        @NotNull(message = "Price not be null") Float price,
                       Float discount,
                       String[] imageUrls) {
 

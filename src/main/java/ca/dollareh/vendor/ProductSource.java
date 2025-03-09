@@ -3,6 +3,10 @@ package ca.dollareh.vendor;
 import ca.dollareh.core.model.Product;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.Validator;
+import jakarta.validation.ValidatorFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +16,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -44,6 +49,9 @@ public abstract class ProductSource {
     }
 
     public void enrich() {
+        Validator validator = Validation.buildDefaultValidatorFactory()
+                .getValidator();
+
         Arrays.stream(transformPath.toFile().listFiles(pathname -> pathname.getName().endsWith(".json")))
                 .parallel()
                 .forEach(transformedJsonFile -> {
@@ -74,12 +82,23 @@ public abstract class ProductSource {
 
                             Product enrichedProduct = originalProduct.merge(transformProduct);
 
-                            File enrichedProductFile = new File(enrichmentPath.toFile(),
-                                    originalProduct.code() + ".json");
+                            Set<ConstraintViolation<Product>> violations = validator.validate(enrichedProduct);
 
-                            enrichedProductFile.getParentFile().mkdirs();
+                            if(violations.isEmpty()) {
+                                File enrichedProductFile = new File(enrichmentPath.toFile(),
+                                        originalProduct.code() + ".json");
 
-                            Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
+                                enrichedProductFile.getParentFile().mkdirs();
+
+                                Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
+                            }
+                            else {
+                                for (ConstraintViolation<Product> violation : violations) {
+                                    throw new IllegalArgumentException(violation.getMessage());
+                                }
+                            }
+
+
                         }
                     } catch (IOException e) {
                         throw new RuntimeException(e);

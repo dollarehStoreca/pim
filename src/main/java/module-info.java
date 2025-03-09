@@ -7,6 +7,9 @@ module my.module {
 
     requires java.net.http;
     requires com.google.common;
+    requires jakarta.validation;
+
+    opens ca.dollareh.core.model;
 
     exports ca.dollareh.core.model;
 }

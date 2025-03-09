@@ -267,7 +267,7 @@ public class Shopify {
 
         Map<String, Object> productMap
                 = Map.of("title", product.title(),
-                "body_html", product.description() == null ? "description" : product.description(),
+                "body_html", product.description(),
                 "handle", product.code(),
                 "vendor" , "Dollareh",
                 "variants", List.of(variantMap));
