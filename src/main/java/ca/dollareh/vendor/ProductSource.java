@@ -55,8 +55,9 @@ public abstract class ProductSource {
         Arrays.stream(transformPath.toFile().listFiles(pathname -> pathname.getName().endsWith(".json")))
                 .parallel()
                 .forEach(transformedJsonFile -> {
+                    String productCode = transformedJsonFile.getName().replaceAll(".json","");
                     try {
-                        List<File> originalJsonFiles = findOriginalProductJson(transformedJsonFile.getName().replaceAll(".json",""));
+                        List<File> originalJsonFiles = findOriginalProductJson(productCode);
 
                         if (!originalJsonFiles.isEmpty()) {
 
@@ -97,8 +98,8 @@ public abstract class ProductSource {
                                     throw new IllegalArgumentException(violation.getMessage());
                                 }
                             }
-
-
+                        } else {
+                            System.out.println(this.getClass().getSimpleName() + " does not contain product " + productCode);
                         }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
