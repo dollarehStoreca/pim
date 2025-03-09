@@ -37,6 +37,7 @@ class DollarEhEnricherTest {
                 String code = row.getCell(1).getStringCellValue();
                 productMap = new HashMap<>();
 
+                productMap.put("description", row.getCell(7).getStringCellValue());
                 productMap.put("inventryQuantity", row.getCell(9).getNumericCellValue());
                 productMap.put("discount", row.getCell(10).getNumericCellValue());
                 productMap.put("price", row.getCell(11).getNumericCellValue());
