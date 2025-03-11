@@ -95,7 +95,8 @@ public abstract class ProductSource {
                             }
                             else {
                                 for (ConstraintViolation<Product> violation : violations) {
-                                    throw new IllegalArgumentException(violation.getMessage());
+                                    System.out.println(productCode + " : " + violation.getMessage());
+                                    //throw new IllegalArgumentException(violation.getMessage());
                                 }
                             }
                         } else {
