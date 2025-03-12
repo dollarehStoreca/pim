@@ -83,6 +83,7 @@ nb-configuration.xml
 ##############################
 .DS_Store
 
+*.log
 data
 workspace
 assets

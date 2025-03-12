@@ -1,4 +1,4 @@
-package ca.dollareh.integration;
+package ca.dollareh;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,10 +16,16 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-class DollarEhEnricherTest {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+class ExcelToJsonTest {
 
     @Test
-    void enrichMultoCraft() throws IOException {
+    void buildTransfomation() throws IOException {
+
+        Logger logger = LoggerFactory.getLogger(ExcelToJsonTest.class);
+        logger.info("Hello World");
 
         FileInputStream file = new FileInputStream(Paths.get("sample/Multicraft Final Order June 02, 2024.xlsx").toFile());
         Workbook workbook = new XSSFWorkbook(file);
