@@ -27,7 +27,7 @@ class ExcelToJsonTest {
         Logger logger = LoggerFactory.getLogger(ExcelToJsonTest.class);
         logger.info("Hello World");
 
-        FileInputStream file = new FileInputStream(Paths.get("sample/Multicraft Final Order June 02, 2024.xlsx").toFile());
+        FileInputStream file = new FileInputStream(Paths.get("sample/Multicraft.xlsx").toFile());
         Workbook workbook = new XSSFWorkbook(file);
 
         Sheet sheet = workbook.getSheetAt(0);
