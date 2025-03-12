@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import jakarta.validation.ValidatorFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,7 +51,9 @@ public abstract class ProductSource {
         Validator validator = Validation.buildDefaultValidatorFactory()
                 .getValidator();
 
-        Arrays.stream(transformPath.toFile().listFiles(pathname -> pathname.getName().endsWith(".json")))
+        File[] transformedFiles = transformPath.toFile().listFiles(pathname -> pathname.getName().endsWith(".json"));
+
+        Arrays.stream(transformedFiles)
                 .parallel()
                 .forEach(transformedJsonFile -> {
                     String productCode = transformedJsonFile.getName().replaceAll(".json","");
@@ -95,8 +96,7 @@ public abstract class ProductSource {
                             }
                             else {
                                 for (ConstraintViolation<Product> violation : violations) {
-                                    System.out.println(productCode + " : " + violation.getMessage());
-                                    //throw new IllegalArgumentException(violation.getMessage());
+                                    throw new IllegalArgumentException(productCode + " : " + violation.getMessage());
                                 }
                             }
                         } else {

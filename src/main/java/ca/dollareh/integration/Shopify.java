@@ -48,6 +48,8 @@ public class Shopify {
     private final File collectionMappingsFile;
     private final Properties collectionMappings;
 
+    private final String defaultCollectionId;
+
     public Shopify(ProductSource productSource) {
         this.productSource = productSource;
 
@@ -62,6 +64,21 @@ public class Shopify {
 
         collectionMappingsFile = new File(exportPath.toFile(), "collection.properties");
         collectionMappings = new Properties();
+
+        File rootColPropsFile = new File(collectionMappingsFile.getParentFile().getParentFile(), collectionMappingsFile.getName());
+        if (rootColPropsFile.exists()) {
+            Properties cProperties = new Properties();
+            try {
+                cProperties.load(new FileReader(rootColPropsFile));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            defaultCollectionId = (String) cProperties.get(productSource.getClass().getSimpleName());
+
+        } else {
+            defaultCollectionId = null;
+        }
 
         if(collectionMappingsFile.exists()) {
             try {
@@ -145,11 +162,18 @@ public class Shopify {
 
     public void export() throws IOException {
 
-        this.productSource.enrich();
-
-
+        // this.productSource.enrich();
 
         File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
+
+
+
+
+
+
+
+
+
 
         Properties properties = new Properties();
 
@@ -160,7 +184,7 @@ public class Shopify {
 
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
+        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json"))[0]);
 
         enrichedJsonFiles.stream().parallel().forEach(enrichedJsonFile -> {
             syncProduct(enrichedJsonFile, properties);
@@ -204,6 +228,10 @@ public class Shopify {
                         System.out.println("Unable to create product : " + enrichedProduct.code());
                     } else {
                         properties.put(enrichedProduct.code(), id.toString());
+
+                        if(defaultCollectionId != null) {
+                            associateCollection(id, defaultCollectionId);
+                        }
 
                         createImages(id, enrichedProduct);
                     }
