@@ -6,6 +6,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -14,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 class MoveTest {
+
+    static final Logger logger = LoggerFactory.getLogger(MoveTest.class);
 
     public static void main(String[] args) throws IOException {
 
@@ -46,7 +50,7 @@ class MoveTest {
 
         for (int i = 0; i < rowsTobeMoved.toArray().length; i++) {
             moveRow(sourceSheet, destinationSheet, rowsTobeMoved.get(i), targetRow);
-            System.out.println("Moved");
+            logger.info("Moved");
             targetRow++;
         }
 
@@ -58,7 +62,7 @@ class MoveTest {
         fos.close();
         workbook.close();
         fis.close();
-        System.out.println("Row copied successfully!");
+        logger.info("Row copied successfully!");
     }
 
     private static void moveRow(Sheet sourceSheet, Sheet destinationSheet, int sourceRowNum, int destinationRowNum) {

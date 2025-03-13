@@ -10,11 +10,12 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,16 +24,19 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class CollectionMakerTest {
+
+    final Logger logger = LoggerFactory.getLogger(CollectionMakerTest.class);
+
     @Test
     void test() throws IOException {
 
         ProductSource productSource = ProductSource
                 .from(MultiCraft.class)
                 .onNew(newProduct -> {
-                    System.out.println("New Product Found " + newProduct);
+                    logger.info("New Product Found " + newProduct);
                 })
                 .onModified(updatedProduct -> {
-                    System.out.println("Product Modified " + updatedProduct);
+                    logger.info("Product Modified " + updatedProduct);
                 })
                 .build();
 
@@ -75,14 +79,14 @@ public class CollectionMakerTest {
         }
 
 //        for (String category : categories) {
-//            System.out.println(category);
+//            logger.info(category);
 //        }
 
         cMap.entrySet().forEach(stringStringEntry -> {
 
-            System.out.println("------------------------------------------\n\n");
+            logger.info("------------------------------------------\n\n");
 
-            System.out.println("Shopify Collection : " + stringStringEntry.getKey());
+            logger.info("Shopify Collection : " + stringStringEntry.getKey());
 
             SortedSet<String> colletionPaths = new TreeSet<>();
 
@@ -96,12 +100,12 @@ public class CollectionMakerTest {
             });
 
 
-            System.out.println(colletionPaths.stream().toList());
+            logger.info(colletionPaths.stream().toList().toString());
 
 
 
 
-            System.out.println("\n\n------------------------------------------");
+            logger.info("\n\n------------------------------------------");
 
         });
 

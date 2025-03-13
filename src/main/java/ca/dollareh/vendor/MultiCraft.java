@@ -22,29 +22,31 @@ public class MultiCraft extends ProductSource {
 
     public static final String BASE_URL = "https://multicraft.ca";
 
+    private final Connection session;
+
     MultiCraft(final Consumer<Product> newProductConsumer,
                final Consumer<Product> modifiedProductConsumer) {
         super(newProductConsumer, modifiedProductConsumer);
+        session = Jsoup.newSession()
+                .timeout(45 * 1000)
+                .maxBodySize(5 * 1024 * 1024);
     }
 
     @Override
     protected void browse() throws IOException, URISyntaxException {
-        Connection session = getSession();
+
 
         browse(new ArrayList<>(), session);
 
-        logout(session);
+
     }
 
-    private static void logout(final Connection session) throws IOException {
+    protected void logout() throws IOException {
         session.newRequest(BASE_URL + "/en/user/logout")
                 .get();
     }
 
-    private static Connection getSession() throws IOException {
-        Connection session = Jsoup.newSession()
-                .timeout(45 * 1000)
-                .maxBodySize(5 * 1024 * 1024);
+    protected void login() throws IOException {
 
         Document langingPage = session.newRequest(BASE_URL +"/en")
                 .get();
@@ -56,23 +58,23 @@ public class MultiCraft extends ProductSource {
                 .data("Password", System.getenv("MULTICRAFT_PW"))
                 .data("__RequestVerificationToken", code)
                 .post();
-        return session;
     }
 
-    public File downloadAsset(final String assetUrl, Connection session) throws IOException {
+    protected File downloadAsset(final String assetUrl) throws IOException {
 
-        Connection.Response resultImageResponse = session
-                .newRequest(BASE_URL + assetUrl)
-                .ignoreContentType(true)
-                .execute();
-        // output here
         Path assetsDir = Path.of("workspace/extracted/"+ getClass().getSimpleName() +"/assets/" );
         File imageFile = Path.of(assetsDir +"/" + assetUrl).toFile();
-        imageFile.getParentFile().mkdirs();
-        FileOutputStream out = new FileOutputStream(imageFile);
-        out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
-        out.close();
 
+        if(!imageFile.exists()) {
+            imageFile.getParentFile().mkdirs();
+            Connection.Response resultImageResponse = session
+                    .newRequest(BASE_URL + assetUrl)
+                    .ignoreContentType(true)
+                    .execute();
+            FileOutputStream out = new FileOutputStream(imageFile);
+            out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
+            out.close();
+        }
         return imageFile;
     }
 
@@ -134,11 +136,6 @@ public class MultiCraft extends ProductSource {
 
         for (int i = 0; i < imageEls.size(); i++) {
             imageUrls[i] = imageEls.get(i).attr("src").split("\\?")[0];
-            try {
-                downloadAsset(imageUrls[i], session);
-            } catch(Exception e) {
-                System.out.println("Unable to download the image for " + productCode );
-            }
         }
 
         Elements fieldEls = doc.select("div.details-brief > .row");

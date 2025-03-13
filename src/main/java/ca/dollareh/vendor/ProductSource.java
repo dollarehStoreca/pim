@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +24,9 @@ import java.util.stream.Collectors;
 public abstract class ProductSource {
 
     public static final String COLLECTION_SEPARATOR = "-";
+
+    final Logger logger = LoggerFactory.getLogger(ProductSource.class);
+
     protected final Path path = Path.of("workspace/extracted/" + getClass().getSimpleName());
 
     protected final Path transformPath = Path.of("workspace/transform/" + getClass().getSimpleName());
@@ -92,6 +97,8 @@ public abstract class ProductSource {
 
                                 enrichedProductFile.getParentFile().mkdirs();
 
+                                downloadAssets(enrichedProduct);
+
                                 Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
                             }
                             else {
@@ -100,7 +107,7 @@ public abstract class ProductSource {
                                 }
                             }
                         } else {
-                            System.out.println(this.getClass().getSimpleName() + " does not contain product " + productCode);
+                            logger.info(this.getClass().getSimpleName() + " does not contain product " + productCode);
                         }
                     } catch (IOException e) {
                         throw new RuntimeException(e);
@@ -108,7 +115,19 @@ public abstract class ProductSource {
                 });
     }
 
+    protected abstract void login() throws IOException;
+
+    protected abstract void logout() throws IOException;
+
     protected abstract void browse() throws IOException, URISyntaxException;
+
+    protected abstract File downloadAsset(final String assetUrl) throws IOException;
+
+    protected void downloadAssets(final Product product) throws IOException {
+        for (String imageUrl: product.imageUrls()) {
+            downloadAsset(imageUrl);
+        }
+    }
 
     protected void onProductDiscovery(final List<String> categories,
                                       final Product product) throws IOException {
@@ -159,8 +178,10 @@ public abstract class ProductSource {
     }
 
     public void extraxt() throws IOException, URISyntaxException {
+        login();
         this.browse();
         this.enrich();
+        logout();
     }
 
     // Builder class

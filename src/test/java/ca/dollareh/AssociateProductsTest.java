@@ -10,6 +10,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,15 +26,17 @@ public class AssociateProductsTest {
 
     final File propFile = new File("workspace/export/Shopify/MultiCraft/product-mapping.properties");
 
+    final Logger logger = LoggerFactory.getLogger(AssociateProductsTest.class);
+
     @Test
     void testBuildAssociations() throws IOException, InterruptedException {
         ProductSource productSource = ProductSource
                 .from(MultiCraft.class)
                 .onNew(newProduct -> {
-                    System.out.println("New Product Found " + newProduct);
+                    logger.info("New Product Found " + newProduct);
                 })
                 .onModified(updatedProduct -> {
-                    System.out.println("Product Modified " + updatedProduct);
+                    logger.info("Product Modified " + updatedProduct);
                 })
                 .build();
 
@@ -81,7 +85,7 @@ public class AssociateProductsTest {
                     subCategory = row.getCell(4).getStringCellValue().trim();
                     subSubCategory = row.getCell(5).getStringCellValue().trim();
 
-                    System.out.println(code + "\t\t" + colleionManeMap.get(subCategory) + "\t\t" + colleionManeMap.get(subSubCategory) );
+                    logger.info(code + "\t\t" + colleionManeMap.get(subCategory) + "\t\t" + colleionManeMap.get(subSubCategory) );
 
                 }
 

@@ -172,7 +172,7 @@ public class Shopify {
         List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
 
         for (int i = 0; i < enrichedJsonFiles.size(); i++) {
-            System.out.println("Creating Product #"+ (i + 1 ) + " " + enrichedJsonFiles.get(i));
+            logger.info("Creating Product #"+ (i + 1 ) + " " + enrichedJsonFiles.get(i));
             syncProduct(enrichedJsonFiles.get(i), properties);
         }
 
@@ -209,7 +209,7 @@ public class Shopify {
                 if (createdProduct.get("product") != null ) {
                     Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
                     if(id == null) {
-                        System.out.println("Unable to create product : " + enrichedProduct.code());
+                        logger.info("Unable to create product : " + enrichedProduct.code());
                     } else {
                         properties.put(enrichedProduct.code(), id.toString());
 
@@ -233,9 +233,9 @@ public class Shopify {
 //                                        "-" +
 //                                        categoryList.stream().collect(Collectors.joining("-"));
 //                                String collectionId = (String) collectionMappings.get(path);
-//                                //System.out.println(collectionId);
+//                                //logger.info(collectionId);
 //                                if(collectionId == null){
-//                                    System.out.println(path + " not found");
+//                                    logger.info(path + " not found");
 //                                } else {
 //                                    try {
 //                                        associateCollection(id, collectionId);
@@ -258,7 +258,7 @@ public class Shopify {
             objectMapper.writeValue(shopifyProductFile, shopifyProduct);
 
         } catch (IOException | InterruptedException e) {
-            System.out.println("Unable to Create Image for " + enrichedJsonFile);
+            logger.info("Unable to Create Image for " + enrichedJsonFile);
         }
     }
 
@@ -327,10 +327,10 @@ public class Shopify {
 //                File imageFile = productSource.downloadAsset(imageUrl);
 //                createImage(productId, imageFile.toPath());
 //            } catch (UncheckedIOException | SocketTimeoutException e) {
-//                System.out.println("Unable to Upload Image for " + productId);
+//                logger.info("Unable to Upload Image for " + productId);
 //            }
 //            catch (IOException | InterruptedException e) {
-//                System.out.println("Unable to Upload Image for " + productId);
+//                logger.info("Unable to Upload Image for " + productId);
 //            }
 //        });
 
