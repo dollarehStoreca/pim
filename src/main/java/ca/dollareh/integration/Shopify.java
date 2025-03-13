@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.jsoup.UncheckedIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -156,59 +158,61 @@ public class Shopify {
 
     public void export() throws IOException {
 
-        File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
-
-        Properties properties = new Properties();
-
-        if (propertiesFile.exists()) {
-            properties.load(new FileReader(propertiesFile));
-        }
-
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json"))[0]);
+        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
 
-        for (int i = 0; i < enrichedJsonFiles.size(); i++) {
-            logger.info("Creating Product #"+ (i + 1 ) + " " + enrichedJsonFiles.get(i));
-            syncProduct(enrichedJsonFiles.get(i), properties);
-        }
 
-        properties.store(new FileOutputStream(propertiesFile), "Updated");
+        enrichedJsonFiles.stream().parallel().forEach(enrichedJsonFile -> {
+            logger.info("Creating Product " + enrichedJsonFile);
+            syncProduct(enrichedJsonFile);
+        });
+
+
+
 
     }
 
-    private void syncProduct(File enrichedJsonFile, Properties properties) {
+    private void syncProduct(File enrichedJsonFile) {
         try {
-
 
             Product enrichedProduct = objectMapper
                     .readValue(enrichedJsonFile, Product.class);
 
             Map<String, Object> shopifyProduct = getShopifyProduct(enrichedProduct);
 
-            File shopifyProductFile = new File(exportPath.toFile(), enrichedProduct.code() + ".json");
+            File[] jsonFiles = exportPath.toFile().listFiles((dir, name) -> name.startsWith(enrichedProduct.code()));
 
-            if (shopifyProductFile.exists()) {
+
+            File shopifyProductFile = null;
+
+            if (jsonFiles != null && jsonFiles.length == 1) {
+
+                shopifyProductFile = jsonFiles[0];
 
                 JsonNode existingShoppifyProduct = objectMapper.readTree(shopifyProductFile);
 
                 JsonNode newShoppifyProduct = objectMapper.readTree(objectMapper.writeValueAsString(shopifyProduct));
 
                 if (!existingShoppifyProduct.equals(newShoppifyProduct)) {
-                    String shopifyProductId = (String) properties.get(enrichedProduct.code());
+                    String shopifyProductId = shopifyProductFile.getName()
+                            .replaceFirst(enrichedProduct.code()+"-","")
+                            .replace(".json","");
                     update(shopifyProductId, shopifyProduct);
                 }
-
-
             } else {
+
                 Map<String, Object> createdProduct = create(shopifyProduct);
 
                 if (createdProduct.get("product") != null ) {
                     Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
+
+
+
                     if(id == null) {
                         logger.info("Unable to create product : " + enrichedProduct.code());
                     } else {
-                        properties.put(enrichedProduct.code(), id.toString());
+                        shopifyProductFile = new File(exportPath.toFile(), enrichedProduct.code() + "-" + id + ".json");
 
                         if(defaultCollectionId != null) {
                             associateCollection(id, defaultCollectionId);
@@ -252,7 +256,12 @@ public class Shopify {
                 }
             }
 
-            objectMapper.writeValue(shopifyProductFile, shopifyProduct);
+            if(shopifyProductFile == null) {
+                logger.error("Unable to Create Product for " + shopifyProductFile);
+            } else {
+                objectMapper.writeValue(shopifyProductFile, shopifyProduct);
+            }
+
 
         } catch (IOException | InterruptedException e) {
             logger.info("Unable to Create Image for " + enrichedJsonFile);
