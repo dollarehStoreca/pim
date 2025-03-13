@@ -156,10 +156,7 @@ public class Shopify {
 
     public void export() throws IOException {
 
-        // this.productSource.enrich();
-
         File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
-
 
         Properties properties = new Properties();
 
@@ -169,7 +166,7 @@ public class Shopify {
 
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
+        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json"))[0]);
 
         for (int i = 0; i < enrichedJsonFiles.size(); i++) {
             logger.info("Creating Product #"+ (i + 1 ) + " " + enrichedJsonFiles.get(i));
@@ -217,7 +214,7 @@ public class Shopify {
                             associateCollection(id, defaultCollectionId);
                         }
 
-                        // createImages(id, enrichedProduct);
+                        createImages(id, enrichedProduct);
                     }
                 }
 
@@ -282,6 +279,7 @@ public class Shopify {
                 "body_html", product.description(),
                 "handle", product.code(),
                 "vendor" , "Dollareh",
+                "tags" , "auto-imported",
                 "variants", List.of(variantMap));
 
         shopifyProduct.put("product", productMap);
@@ -322,17 +320,18 @@ public class Shopify {
     }
 
     public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
-//        Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
-//            try {
-//                File imageFile = productSource.downloadAsset(imageUrl);
-//                createImage(productId, imageFile.toPath());
-//            } catch (UncheckedIOException | SocketTimeoutException e) {
-//                logger.info("Unable to Upload Image for " + productId);
-//            }
-//            catch (IOException | InterruptedException e) {
-//                logger.info("Unable to Upload Image for " + productId);
-//            }
-//        });
+        Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
+            try {
+                Path assetsDir = Path.of("workspace/extracted/"+ productSource.getClass().getSimpleName() +"/assets/" );
+                File imageFile = Path.of(assetsDir +"/" + imageUrl).toFile();
+                createImage(productId, imageFile.toPath());
+            } catch (UncheckedIOException | SocketTimeoutException e) {
+                logger.info("Unable to Upload Image for " + productId);
+            }
+            catch (IOException | InterruptedException e) {
+                logger.info("Unable to Upload Image for " + productId);
+            }
+        });
 
     }
 

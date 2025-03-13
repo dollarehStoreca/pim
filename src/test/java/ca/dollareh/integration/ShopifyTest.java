@@ -25,7 +25,7 @@ class ShopifyTest {
                 })
                 .build();
 
-        // new Shopify(productSource).createCollectionMappings();;
+        // new Shopify(productSource).createCollectionMappings();
         new Shopify(productSource).export();
     }
 
