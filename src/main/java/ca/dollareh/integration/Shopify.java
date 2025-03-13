@@ -7,6 +7,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.core5.net.URIBuilder;
 import org.apache.poi.xslf.usermodel.XSLFTable;
 import org.jsoup.UncheckedIOException;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -163,7 +165,7 @@ public class Shopify {
         List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
 
 
-        enrichedJsonFiles.stream().parallel().forEach(enrichedJsonFile -> {
+        enrichedJsonFiles.stream().forEach(enrichedJsonFile -> {
             logger.info("Creating Product " + enrichedJsonFile);
             syncProduct(enrichedJsonFile);
         });
@@ -207,10 +209,8 @@ public class Shopify {
                 if (createdProduct.get("product") != null ) {
                     Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
 
-
-
                     if(id == null) {
-                        logger.info("Unable to create product : " + enrichedProduct.code());
+                        logger.error("Unable to create product : " + enrichedProduct.code());
                     } else {
                         shopifyProductFile = new File(exportPath.toFile(), enrichedProduct.code() + "-" + id + ".json");
 
@@ -220,6 +220,8 @@ public class Shopify {
 
                         createImages(id, enrichedProduct);
                     }
+                } else {
+                    logger.error("Unable to create product : " + createdProduct);
                 }
 
 
@@ -361,6 +363,47 @@ public class Shopify {
         return objectMapper.readValue(response.body()
                 , new TypeReference<>() {
                 });
+    }
+
+    public Long getShopifyCollection(String title) throws URISyntaxException {
+        HttpClient client = HttpClient.newHttpClient();
+        Long collectionId = null;
+
+        URI uri = new URIBuilder(baseUrl + "/custom_collections.json")
+                .addParameter("title", title)
+                .build();
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(uri.toString()))
+                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("Content-Type", "application/json")
+                .GET()
+                .build();
+
+        try {
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Failed to fetch Shopify collections: " + response.body());
+            }
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
+                    new TypeReference<>() {});
+
+            Map<Long, Map<String, Object>> collectionsMap = new HashMap<>();
+            List<Map<String, Object>> collections = responseBody.get("custom_collections");
+
+            if (collections != null) {
+                for (Map<String, Object> collection : collections) {
+                    collectionId = ((Number) collection.get("id")).longValue();
+                }
+            }
+
+            return collectionId;
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching Shopify collections", e);
+        }
     }
 
     /**
