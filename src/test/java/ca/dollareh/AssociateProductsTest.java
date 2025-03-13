@@ -46,13 +46,11 @@ public class AssociateProductsTest {
             colleionManeMap.put((String) longMapEntry.getValue().get("title"),longMapEntry.getKey() );
         });
 
-        Long craftId = colleionManeMap.get("Craft");
-
         Properties properties = new Properties();
         properties.load(new FileReader(propFile));
 
 
-        FileInputStream file = new FileInputStream(Paths.get("sample/Multicraft Final Order June 02, 2024.xlsx").toFile());
+        FileInputStream file = new FileInputStream(Paths.get("sample/Multicraft.xlsx").toFile());
         Workbook workbook = new XSSFWorkbook(file);
 
         Sheet sheet = workbook.getSheetAt(0);
@@ -61,47 +59,30 @@ public class AssociateProductsTest {
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
 
-        String subSubCategory = "";
+
 
         int i = 0;
-        String subSubCategoryValue;
 
-        String categoryValue ;
+        String code, productId ;
 
-        String subCategoryValue ;
+        String subCategory ;
+
+        String subSubCategory;
+
+
 
         for (Row row : sheet) {
             if (i != 0) {
-                String code = row.getCell(1).getStringCellValue().trim();
+                code = row.getCell(1).getStringCellValue().trim();
 
-
-
-                subCategoryValue = row.getCell(4).getStringCellValue().trim();
-
-                subSubCategoryValue = row.getCell(5).getStringCellValue().trim();
-
-                String productId = (String) properties.get(code);
+                productId = (String) properties.get(code);
 
                 if(productId != null) {
-                    System.out.println(code);
-                    System.out.println(productId);
-                    System.out.println("Collctions");
+                    subCategory = row.getCell(4).getStringCellValue().trim();
+                    subSubCategory = row.getCell(5).getStringCellValue().trim();
 
-                    System.out.println(craftId);
+                    System.out.println(code + "\t\t" + colleionManeMap.get(subCategory) + "\t\t" + colleionManeMap.get(subSubCategory) );
 
-                    shopify.associateCollection(Long.valueOf(productId), craftId.toString());
-
-                    Long cId = colleionManeMap.get(subCategoryValue);
-
-                    if(cId != null) {
-                        shopify.associateCollection(Long.valueOf(productId), cId.toString());
-                    }
-
-                    cId = colleionManeMap.get(subSubCategoryValue);
-
-                    if(cId != null) {
-                        shopify.associateCollection(Long.valueOf(productId), cId.toString());
-                    }
                 }
 
             }

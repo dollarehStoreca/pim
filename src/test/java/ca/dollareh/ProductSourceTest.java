@@ -21,10 +21,7 @@ class ProductSourceTest {
                 })
                 .build();
 
-        // productSource.browse();
-
-
-        productSource.enrich();
+        productSource.extraxt();
 
     }
 

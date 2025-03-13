@@ -7,12 +7,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jsoup.UncheckedIOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -23,7 +23,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
@@ -31,7 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.stream.Collectors;
 
 public class Shopify {
 
@@ -88,8 +86,6 @@ public class Shopify {
             }
         }
 
-
-
     }
 
     public Map<String, Object> createCollection(String title,List<String> downSteamPaths) throws IOException, InterruptedException {
@@ -140,12 +136,10 @@ public class Shopify {
                                     paths.forEach(s -> {
                                         collectionMappings.put(s, longMapEntry.getKey().toString());
                                     });
-
                                 }
                             } catch (JsonProcessingException e) {
                                 throw new RuntimeException(e);
                             }
-
 
                         });
             }
@@ -167,28 +161,20 @@ public class Shopify {
         File propertiesFile = new File(exportPath.toFile(), "product-mapping.properties");
 
 
-
-
-
-
-
-
-
-
         Properties properties = new Properties();
 
         if (propertiesFile.exists()) {
             properties.load(new FileReader(propertiesFile));
         }
 
-
         Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json"))[0]);
+        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
 
-        enrichedJsonFiles.stream().parallel().forEach(enrichedJsonFile -> {
-            syncProduct(enrichedJsonFile, properties);
-        });
+        for (int i = 0; i < enrichedJsonFiles.size(); i++) {
+            System.out.println("Creating Product #"+ (i + 1 ) + " " + enrichedJsonFiles.get(i));
+            syncProduct(enrichedJsonFiles.get(i), properties);
+        }
 
         properties.store(new FileOutputStream(propertiesFile), "Updated");
 
@@ -200,8 +186,6 @@ public class Shopify {
 
             Product enrichedProduct = objectMapper
                     .readValue(enrichedJsonFile, Product.class);
-
-            System.out.println("Creating Product " + enrichedProduct.code());
 
             Map<String, Object> shopifyProduct = getShopifyProduct(enrichedProduct);
 
@@ -233,7 +217,7 @@ public class Shopify {
                             associateCollection(id, defaultCollectionId);
                         }
 
-                        createImages(id, enrichedProduct);
+                        // createImages(id, enrichedProduct);
                     }
                 }
 
@@ -274,7 +258,7 @@ public class Shopify {
             objectMapper.writeValue(shopifyProductFile, shopifyProduct);
 
         } catch (IOException | InterruptedException e) {
-            throw new RuntimeException(e);
+            System.out.println("Unable to Create Image for " + enrichedJsonFile);
         }
     }
 
@@ -285,10 +269,10 @@ public class Shopify {
                 = Map.of("price", product.price(),
                 "compare_at_price", product.discount(),
                 "inventory_quantity", product.inventryQuantity(),
-                "title", product.title(),
+                "title", "Default Title",
                 "inventory_policy", "deny" ,
                 "inventory_management","shopify",
-                "option1" ,product.title(),
+                "option1" ,"Default Title",
                 "fulfillment_service", "manual",
                 "taxable", true,
                 "requires_shipping", true);
@@ -338,17 +322,17 @@ public class Shopify {
     }
 
     public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
-        Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
-            try {
-                File imageFile = productSource.downloadAsset(imageUrl);
-                createImage(productId, imageFile.toPath());
-            } catch (SocketTimeoutException e) {
-                System.out.println("Unable to Upload Image for " + productId);
-            }
-            catch (IOException | InterruptedException e) {
-                System.out.println("Unable to Upload Image for " + productId);
-            }
-        });
+//        Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
+//            try {
+//                File imageFile = productSource.downloadAsset(imageUrl);
+//                createImage(productId, imageFile.toPath());
+//            } catch (UncheckedIOException | SocketTimeoutException e) {
+//                System.out.println("Unable to Upload Image for " + productId);
+//            }
+//            catch (IOException | InterruptedException e) {
+//                System.out.println("Unable to Upload Image for " + productId);
+//            }
+//        });
 
     }
 

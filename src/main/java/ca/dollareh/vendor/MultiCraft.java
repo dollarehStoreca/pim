@@ -10,7 +10,6 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
@@ -29,7 +28,7 @@ public class MultiCraft extends ProductSource {
     }
 
     @Override
-    public void browse() throws IOException, URISyntaxException {
+    protected void browse() throws IOException, URISyntaxException {
         Connection session = getSession();
 
         browse(new ArrayList<>(), session);
@@ -60,21 +59,19 @@ public class MultiCraft extends ProductSource {
         return session;
     }
 
-    @Override
-    public File downloadAsset(final String assetUrl) throws IOException {
-        Connection session = getSession();
+    public File downloadAsset(final String assetUrl, Connection session) throws IOException {
 
-        String image = assetUrl.replace(BASE_URL, "");
-
-        Connection.Response resultImageResponse = session.newRequest(assetUrl).ignoreContentType(true).execute();
+        Connection.Response resultImageResponse = session
+                .newRequest(BASE_URL + assetUrl)
+                .ignoreContentType(true)
+                .execute();
         // output here
         Path assetsDir = Path.of("workspace/extracted/"+ getClass().getSimpleName() +"/assets/" );
-        File imageFile = Path.of(assetsDir +"/" + image).toFile();
+        File imageFile = Path.of(assetsDir +"/" + assetUrl).toFile();
         imageFile.getParentFile().mkdirs();
         FileOutputStream out = new FileOutputStream(imageFile);
         out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
         out.close();
-        logout(session);
 
         return imageFile;
     }
@@ -136,7 +133,12 @@ public class MultiCraft extends ProductSource {
         String[] imageUrls = new String[imageEls.size()];
 
         for (int i = 0; i < imageEls.size(); i++) {
-            imageUrls[i] = BASE_URL + imageEls.get(i).attr("src").split("\\?")[0];
+            imageUrls[i] = imageEls.get(i).attr("src").split("\\?")[0];
+            try {
+                downloadAsset(imageUrls[i], session);
+            } catch(Exception e) {
+                System.out.println("Unable to download the image for " + productCode );
+            }
         }
 
         Elements fieldEls = doc.select("div.details-brief > .row");

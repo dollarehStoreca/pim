@@ -47,7 +47,7 @@ public abstract class ProductSource {
         return new ProductSourceBuilder(productSourceClassr);
     }
 
-    public void enrich() {
+    private void enrich() {
         Validator validator = Validation.buildDefaultValidatorFactory()
                 .getValidator();
 
@@ -108,9 +108,7 @@ public abstract class ProductSource {
                 });
     }
 
-    public abstract void browse() throws IOException, URISyntaxException;
-
-    public abstract File downloadAsset(final String assetUrl) throws IOException;
+    protected abstract void browse() throws IOException, URISyntaxException;
 
     protected void onProductDiscovery(final List<String> categories,
                                       final Product product) throws IOException {
@@ -158,6 +156,11 @@ public abstract class ProductSource {
         File[] files = path.toFile().listFiles((dir, name) -> name.startsWith(code+COLLECTION_SEPARATOR));
 
         return List.of(files) ;
+    }
+
+    public void extraxt() throws IOException, URISyntaxException {
+        this.browse();
+        this.enrich();
     }
 
     // Builder class
