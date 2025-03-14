@@ -333,8 +333,7 @@ public class Shopify {
     public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
         Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
             try {
-                Path assetsDir = Path.of("workspace/extracted/"+ productSource.getClass().getSimpleName() +"/assets/" );
-                File imageFile = Path.of(assetsDir +"/" + imageUrl).toFile();
+                File imageFile = productSource.getAssetFile(imageUrl);
                 createImage(productId, imageFile.toPath());
             } catch (UncheckedIOException | SocketTimeoutException e) {
                 logger.info("Unable to Upload Image for " + productId);

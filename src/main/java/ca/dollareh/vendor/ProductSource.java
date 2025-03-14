@@ -33,6 +33,8 @@ public abstract class ProductSource {
 
     protected final Path enrichmentPath = Path.of("workspace/enrichment/" + getClass().getSimpleName());
 
+    private final Path assetsPath = Path.of("workspace/extracted/"+ getClass().getSimpleName() +"/assets/" );
+
     final Consumer<Product> newProductConsumer;
     final Consumer<Product> modifiedProductConsumer;
 
@@ -152,6 +154,10 @@ public abstract class ProductSource {
                             .writeValueAsString(product));
             newProductConsumer.accept(product);
         }
+    }
+
+    public File getAssetFile(final String assetUrl) {
+        return Path.of(assetsPath +"/" + assetUrl).toFile();
     }
 
 

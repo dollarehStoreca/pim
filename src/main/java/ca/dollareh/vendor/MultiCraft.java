@@ -62,8 +62,7 @@ public class MultiCraft extends ProductSource {
 
     protected File downloadAsset(final String assetUrl) throws IOException {
 
-        Path assetsDir = Path.of("workspace/extracted/"+ getClass().getSimpleName() +"/assets/" );
-        File imageFile = Path.of(assetsDir +"/" + assetUrl).toFile();
+        File imageFile = getAssetFile(assetUrl);
 
         if(!imageFile.exists()) {
             imageFile.getParentFile().mkdirs();
