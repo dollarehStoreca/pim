@@ -330,18 +330,20 @@ public class Shopify {
 
     }
 
-    public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
-        Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
+    public void createImages(final Long productId, Product product) {
+
+        for (String imageUrl: product.imageUrls()) {
             try {
                 File imageFile = productSource.getAssetFile(imageUrl);
                 createImage(productId, imageFile.toPath());
-            } catch (UncheckedIOException | SocketTimeoutException e) {
+            }
+            catch (UncheckedIOException |
+                   IOException | InterruptedException e) {
                 logger.info("Unable to Upload Image for " + productId);
             }
-            catch (IOException | InterruptedException e) {
-                logger.info("Unable to Upload Image for " + productId);
-            }
-        });
+        }
+
+
 
     }
 
