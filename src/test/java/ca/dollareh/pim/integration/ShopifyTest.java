@@ -1,7 +1,7 @@
-package ca.dollareh.integration;
+package ca.dollareh.pim.integration;
 
-import ca.dollareh.vendor.MultiCraft;
-import ca.dollareh.vendor.ProductSource;
+import ca.dollareh.pim.source.MultiCraft;
+import ca.dollareh.pim.source.ProductSource;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

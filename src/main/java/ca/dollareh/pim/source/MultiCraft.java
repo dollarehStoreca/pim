@@ -1,4 +1,4 @@
-package ca.dollareh.pim.vendor;
+package ca.dollareh.pim.source;
 
 import ca.dollareh.pim.model.Product;
 import org.apache.hc.core5.http.NameValuePair;

@@ -1,4 +1,4 @@
-package ca.dollareh;
+package ca.dollareh.pim;
 
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;

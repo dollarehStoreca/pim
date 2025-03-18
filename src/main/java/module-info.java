@@ -10,7 +10,6 @@ module my.module {
     requires jakarta.validation;
     requires org.apache.poi.ooxml;
 
-    opens ca.dollareh.core.model;
-
-    exports ca.dollareh.core.model;
+    exports ca.dollareh.pim.model;
+    opens ca.dollareh.pim.model;
 }

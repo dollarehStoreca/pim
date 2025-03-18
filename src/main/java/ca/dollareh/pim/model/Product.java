@@ -1,4 +1,4 @@
-package ca.dollareh.core.model;
+package ca.dollareh.pim.model;
 
 import jakarta.validation.constraints.NotNull;
 

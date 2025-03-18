@@ -1,8 +1,8 @@
-package ca.dollareh;
+package ca.dollareh.pim;
 
-import ca.dollareh.integration.Shopify;
-import ca.dollareh.vendor.MultiCraft;
-import ca.dollareh.vendor.ProductSource;
+import ca.dollareh.pim.integration.Shopify;
+import ca.dollareh.pim.source.MultiCraft;
+import ca.dollareh.pim.source.ProductSource;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.Row;

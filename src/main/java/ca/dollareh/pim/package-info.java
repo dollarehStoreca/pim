@@ -1,4 +1,4 @@
 /**
  * Basic Classes for Practicing Java.
  */
-package ca.dollareh;
+package ca.dollareh.pim;

@@ -1,4 +1,4 @@
-package ca.dollareh;
+package ca.dollareh.pim;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;

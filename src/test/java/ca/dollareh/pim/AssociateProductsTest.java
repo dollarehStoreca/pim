@@ -1,8 +1,8 @@
-package ca.dollareh;
+package ca.dollareh.pim;
 
-import ca.dollareh.integration.Shopify;
-import ca.dollareh.vendor.MultiCraft;
-import ca.dollareh.vendor.ProductSource;
+import ca.dollareh.pim.integration.Shopify;
+import ca.dollareh.pim.source.MultiCraft;
+import ca.dollareh.pim.source.ProductSource;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.poi.ss.usermodel.Row;
@@ -15,16 +15,11 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Properties;
-import java.util.SortedSet;
-import java.util.TreeSet;
 
 public class AssociateProductsTest {
 

@@ -1,6 +1,6 @@
-package ca.dollareh.pim.vendor;
+package ca.dollareh.pim.source;
 
-import ca.dollareh.pim.core.model.Product;
+import ca.dollareh.pim.model.Product;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
