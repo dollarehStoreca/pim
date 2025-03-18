@@ -28,12 +28,14 @@ import java.nio.file.Files;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
 import static org.apache.hc.core5.http.HttpStatus.SC_CREATED;
+import static org.apache.hc.core5.http.HttpStatus.SC_OK;
 
 public class Shopify {
 
@@ -43,6 +45,7 @@ public class Shopify {
     private final String accessToken;
 
     private final Path exportPath;
+    private final Path enrichmentPath;
 
     private final ProductSource productSource;
     private final Long defaultCollectionId;
@@ -59,6 +62,7 @@ public class Shopify {
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
         exportPath = Path.of("workspace/export/" + getClass().getSimpleName() + "/" + productSource.getClass().getSimpleName());
+        enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
         exportPath.toFile().mkdirs();
 
@@ -78,65 +82,74 @@ public class Shopify {
     }
 
     public void export() throws IOException, InterruptedException {
-        Product product = new Product("Sample", "Sample 3" , "Sample", 1L,
-                1,1.0f,1.0f,null);
 
-        File productJsonFile = getProductFile(product);
+        File[] enrichedJsonFiles = enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith("AB020A.json"));
 
-        if(productJsonFile.exists()) {
-            update(getProductId(productJsonFile), product);
-        } else {
-            create(product);
+        if(enrichedJsonFiles != null) {
+            for (File enrichedJsonFile: enrichedJsonFiles) {
+                Product enrichedProduct = objectMapper
+                        .readValue(enrichedJsonFile, Product.class);
+
+                File shopifyProductJsonFile = getProductFile(enrichedProduct);
+
+                if(shopifyProductJsonFile.exists()) {
+                    update(getProductId(shopifyProductJsonFile), enrichedProduct);
+                } else {
+                    create(enrichedProduct);
+                }
+
+            }
         }
     }
 
     private void create(final Product product) throws IOException, InterruptedException {
+        try (HttpClient client = HttpClient.newHttpClient()) {
 
-        HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = getShopifyRequestBuilder("/products.json")
+                    .POST(HttpRequest.BodyPublishers.ofString(getShopifyProduct(product)))
+                    .build();
 
-        HttpRequest request = getShopifyRequestBuilder("/products.json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(getShopifyProduct(product))))
-                .build();
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if ( response.statusCode() == SC_CREATED) {
 
-        HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+                File productJsonFile = getProductFile(product);
 
-        if ( response.statusCode() == SC_CREATED) {
+                Files.write(productJsonFile.toPath(), response.body(), StandardOpenOption.CREATE);
 
-            File productJsonFile = getProductFile(product);
+                Long productId = getProductId(productJsonFile);
 
-            Files.write(productJsonFile.toPath(), response.body(), StandardOpenOption.CREATE);
+                associateCollection(productId, defaultCollectionId);
+                createImages(productId, product);
 
-            Long productId = getProductId(productJsonFile);
-            associateCollection(productId, defaultCollectionId);
-
-        } else {
-            logger.error("Product {} not created", product.code());
+            } else {
+                logger.error("Product {} not created", product.code());
+            }
         }
+
     }
 
     public void update(final Long productId, final Product product) throws IOException, InterruptedException {
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpRequest request = getShopifyRequestBuilder("/products/" + productId + ".json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(getShopifyProduct(product)))
+                    .build();
 
-        HttpClient client = HttpClient.newHttpClient();
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
-        HttpRequest request = getShopifyRequestBuilder("/products/" + productId + ".json")
-                .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(getShopifyProduct(product))))
-                .build();
-
-        HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
-
-        if ( response.statusCode() == HttpStatus.SC_OK) {
-            Files.write(getProductFile(product).toPath(), response.body());
-        } else {
-            logger.error("Product {} not updated", product.code());
+            if ( response.statusCode() == HttpStatus.SC_OK) {
+                Files.write(getProductFile(product).toPath(), response.body());
+            } else {
+                logger.error("Product {} not updated", product.code());
+            }
         }
+
     }
 
     private File getProductFile(final Product product) {
         return new File(exportPath.toFile(), product.code() + ".json");
     }
 
-    private Map<String, Object> getShopifyProduct(final Product product) {
-        Map<String, Object> shopifyProduct = new HashMap<>(1);
+    private String getShopifyProduct(final Product product) throws JsonProcessingException {
 
         Map<String, Object> variantMap
                 = Map.of("price", product.price(),
@@ -158,32 +171,76 @@ public class Shopify {
                 "tags" , "auto-imported",
                 "variants", List.of(variantMap));
 
-        shopifyProduct.put("product", productMap);
 
-        return shopifyProduct;
+        return objectMapper.writeValueAsString(Map.of("product", productMap));
     }
 
     public void associateCollection(final Long productId, final Long collectionId) throws IOException, InterruptedException {
 
-        HttpClient client = HttpClient.newHttpClient();
+        try (HttpClient client = HttpClient.newHttpClient()) {
 
-        // Build HTTP request
-        HttpRequest request = getShopifyRequestBuilder("/collects.json")
-                .POST(HttpRequest.BodyPublishers.ofString(
-                        objectMapper.writeValueAsString(
-                            Map.of("collect", Map.of("product_id", productId,
-                            "collection_id",collectionId)))))
-                .build();
+            // Build HTTP request
+            HttpRequest request = getShopifyRequestBuilder("/collects.json")
+                    .POST(HttpRequest.BodyPublishers.ofString(
+                            objectMapper.writeValueAsString(
+                                    Map.of("collect", Map.of("product_id", productId,
+                                            "collection_id", collectionId)))))
+                    .build();
 
-        // Send request and get response
-        HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            // Send request and get response
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
-        if (response.statusCode() == SC_CREATED) {
-            logger.info("Product {} asociated to Collection {}", productId, collectionId);
-        } else {
-            logger.info("Product {} can not be asociated to Collection {}", productId, collectionId);
+            if (response.statusCode() == SC_CREATED) {
+                logger.info("Product {} asociated to Collection {}", productId, collectionId);
+            } else {
+                logger.info("Product {} can not be asociated to Collection {}", productId, collectionId);
+            }
+
         }
 
+
+
+    }
+
+    public void createImages(final Long productId, Product product) {
+        try (HttpClient client = HttpClient.newHttpClient()) {
+
+            // Build HTTP request
+            HttpRequest.Builder requestBuilder = getShopifyRequestBuilder("/products/" + productId + "/images.json");
+
+            for (String imageUrl : product.imageUrls()) {
+                try {
+                    File imageFile = productSource.getAssetFile(imageUrl);
+
+                    // Convert Image to Base64
+                    String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(imageFile.toPath()));
+
+                    // Create JSON request body
+                    String requestBody = """
+                            {
+                              "image": {
+                                "attachment": "%s"
+                              }
+                            }
+                            """.formatted(base64Image);
+
+                    HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                            .build();
+
+                    // Send request and get response
+                    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+                    if (response.statusCode() == SC_OK) {
+                        logger.info("Image {} upload for product {}", imageUrl, product.code());
+                    } else {
+                        logger.error("Image {} not upload for product {}", imageUrl, product.code());
+                    }
+
+                } catch (IOException | InterruptedException e) {
+                    logger.error("Unable to Upload Image for " + productId);
+                }
+            }
+        }
     }
 
     private Long getProductId(final File productJsonFile) throws IOException {
