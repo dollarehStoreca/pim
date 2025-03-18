@@ -2,6 +2,8 @@ package ca.dollareh.pim.source;
 
 import ca.dollareh.pim.model.Product;
 import ca.dollareh.pim.util.HttpUtil;
+import org.apache.hc.core5.http.NameValuePair;
+import org.apache.hc.core5.net.URIBuilder;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -31,17 +33,32 @@ public class MultiCraft extends ProductSource {
     @Override
     protected void login() throws IOException {
         logger.info("Logging into Multicraft");
+        Document langingPage = session.newRequest(BASE_URL +"/en")
+                .get();
+
+        String code = langingPage.selectFirst("input[name=\"__RequestVerificationToken\"]").val();
+
+        session.newRequest(BASE_URL + "/en/user/login")
+                .data("UserName", System.getenv("MULTICRAFT_USER"))
+                .data("Password", System.getenv("MULTICRAFT_PW"))
+                .data("__RequestVerificationToken", code)
+                .post();
     }
 
     @Override
     protected void logout() throws IOException {
         logger.info("Logged out from Multicraft");
+
+        session.newRequest(BASE_URL + "/en/user/logout")
+                .get();
     }
 
     @Override
     protected void browse() throws IOException {
         logger.info("Browsing Multicraft");
         Document document = getHTMLDocument("/en/brand/");
+
+        // Get Sub Categories
 
         Element ulElement = document.selectFirst("ul.brandsList");
         if(ulElement != null) {
@@ -55,6 +72,11 @@ public class MultiCraft extends ProductSource {
                 }
             });
         }
+
+        // Get Sub Categories
+
+
+
     }
 
     @Override
@@ -66,6 +88,8 @@ public class MultiCraft extends ProductSource {
         logger.info("Browsing brand {}", categories);
         Document subBrandDocument = getHTMLDocument("/en/brand/subbrands?code=" + categories.getLast());
 
+        // Get Products
+
         Elements skusEls = subBrandDocument.select("#skusCards>li");
 
         skusEls.stream().parallel().forEach(skusEl -> {
@@ -73,6 +97,19 @@ public class MultiCraft extends ProductSource {
 
             logger.info("Product Found {}", productCode);
         });
+
+
+        // Get Sub Categories
+
+        Elements brandsEls = subBrandDocument.select("ul.brandsList>li>a");
+
+        if(brandsEls.isEmpty()) {
+            System.out.println("Empty");
+        } else {
+            for (Element brandsAnchorEl : brandsEls) {
+                System.out.println(brandsAnchorEl);
+            }
+        }
     }
 
     private Document getHTMLDocument(final String url) throws IOException {
