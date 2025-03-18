@@ -14,6 +14,9 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +27,7 @@ import java.util.stream.Collectors;
 public abstract class ProductSource {
 
     public static final String COLLECTION_SEPARATOR = "-";
+    private static final int CACHE_DURATION = 12;
 
     final Logger logger = LoggerFactory.getLogger(ProductSource.class);
 
@@ -189,7 +193,18 @@ public abstract class ProductSource {
 
     public void extraxt() throws IOException, URISyntaxException {
         login();
-        this.browse();
+        try {
+            FileTime lastModifiedTime = Files.getLastModifiedTime(path);
+            Instant lastModifiedInstant = lastModifiedTime.toInstant();
+            Instant twelveHoursAgo = Instant.now().minus(CACHE_DURATION, ChronoUnit.HOURS);
+            if (lastModifiedInstant.isAfter(twelveHoursAgo)) {
+                logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
+            } else {
+                this.browse();
+            }
+        } catch (IOException e) {
+            logger.error("Error checking folder modification time: {}" , e.getMessage());
+        }
         this.enrich();
         logout();
     }
