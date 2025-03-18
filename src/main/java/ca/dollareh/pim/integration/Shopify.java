@@ -3,7 +3,10 @@ package ca.dollareh.pim.integration;
 import ca.dollareh.pim.model.Product;
 import ca.dollareh.pim.source.ProductSource;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,17 +65,33 @@ public class Shopify {
 
 
     public void export() throws IOException, InterruptedException {
-
-        Product product = new Product("Sample", "Sample", "Sample", 1L,
+        Product product = new Product("Sample", "Sample 3" , "Sample", 1L,
                 1,1.0f,1.0f,null);
 
-        if(getProductFile(product).exists()) {
-            System.out.println("Lets Update");
+        File productJsonFile = getProductFile(product);
+
+        if(productJsonFile.exists()) {
+            update(getProductId(productJsonFile), product);
         } else {
             create(product);
         }
 
+    }
 
+    private Long getProductId(final File productJsonFile) throws IOException {
+        Long productId = null;
+        JsonFactory factory = new JsonFactory();
+        try (JsonParser parser = factory.createParser(productJsonFile)) {
+            while (!parser.isClosed()) {
+                JsonToken token = parser.nextToken();
+                if (token == JsonToken.FIELD_NAME && "id".equals(parser.getCurrentName())) {
+                    parser.nextToken();
+                    productId = parser.getLongValue();
+                    break; // Exit early after finding the required field
+                }
+            }
+        }
+        return productId;
     }
 
 
@@ -90,6 +109,23 @@ public class Shopify {
             Files.writeString(getProductFile(product).toPath(), response.body());
         } else {
             logger.error("Product {} not created", product.code());
+        }
+    }
+
+    public void update(Long productId, final Product product) throws IOException, InterruptedException {
+
+        HttpClient client = HttpClient.newHttpClient();
+
+        HttpRequest request = getShopifyRequestBuilder("/products/" + productId + ".json")
+                .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(getShopifyProduct(product))))
+                .build();
+
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+        if ( response.statusCode() == HttpStatus.SC_OK) {
+            Files.writeString(getProductFile(product).toPath(), response.body());
+        } else {
+            logger.error("Product {} not updated", product.code());
         }
     }
 
