@@ -11,7 +11,6 @@ import org.jsoup.select.Elements;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
 import java.util.function.Consumer;
 
 public class MultiCraft extends ProductSource {
@@ -39,22 +38,22 @@ public class MultiCraft extends ProductSource {
     }
 
     @Override
-    protected void browse() throws IOException, URISyntaxException {
+    protected void browse() throws IOException {
         logger.info("Browsing Multicraft");
         Document document = getHTMLDocument("/en/brand/");
 
         Element ulElement = document.selectFirst("ul.brandsList");
-        Elements liElements = ulElement.children();
+        if(ulElement != null) {
+            Elements liElements = ulElement.children();
 
-        liElements.stream().parallel().forEach(liElement -> {
-            try {
-                browse(HttpUtil.getRequestParameter(liElement.selectFirst("a").attr("href"), "code"));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            } catch (URISyntaxException e) {
-                throw new RuntimeException(e);
-            }
-        });
+            liElements.stream().parallel().forEach(liElement -> {
+                try {
+                    browse(HttpUtil.getRequestParameter(liElement.selectFirst("a").attr("href"), "code"));
+                } catch (IOException | URISyntaxException e) {
+                    logger.error("Browsing Failed", e);
+                }
+            });
+        }
     }
 
     @Override
@@ -62,30 +61,16 @@ public class MultiCraft extends ProductSource {
         return null;
     }
 
-    private void browse(final String category) throws IOException, URISyntaxException {
-        logger.info("Browsing brands {}", category);
+    private void browse(final String category) throws IOException {
+        logger.info("Browsing brand {}", category);
         Document subBrandDocument = getHTMLDocument("/en/brand/subbrands?code=" + category);
-        Element brandUlElements = subBrandDocument.getElementById("skusCards");
-        Elements brandLi = brandUlElements.children();
 
-        brandLi.stream().parallel().forEach(brandLiElement -> {
-//            logger.info("reading product info....");
-            Elements imageElements = brandLiElement.select("img.skuSummary-img");
-            String[] imgUrls = imageElements.stream().parallel().map(imageElement -> {
-                return imageElements.attr("src");
-            }).toArray(String[]::new);
+        Elements skusEls = subBrandDocument.select("#skusCards>li");
 
-            logger.info("Product title for {}, is {}", category, Arrays.toString(imgUrls));
-            Product product = new Product(
-                    brandLiElement.selectFirst("div.skuSummary-top-brief").selectFirst("p").text(),
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null,
-                    null
-            );
+        skusEls.stream().parallel().forEach(skusEl -> {
+            String productCode = skusEl.selectFirst(".summary-id").text().trim();
+
+            logger.info("Product Found {}", productCode);
         });
     }
 
