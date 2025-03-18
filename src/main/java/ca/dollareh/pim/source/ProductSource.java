@@ -131,11 +131,22 @@ public abstract class ProductSource {
 
     protected abstract void browse() throws IOException, URISyntaxException;
 
-    protected abstract File downloadAsset(final String assetUrl) throws IOException;
+    protected abstract void downloadAsset(final File imageFile,final String assetUrl) throws IOException;
 
-    protected void downloadAssets(final Product product) throws IOException {
-        for (String imageUrl: product.imageUrls()) {
-            downloadAsset(imageUrl);
+    protected void downloadAssets(final Product product) {
+        if(product.imageUrls() != null) {
+            Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
+                File imageFile = getAssetFile(imageUrl);
+                if(!imageFile.exists()) {
+                    logger.info("Downloading image {} for {}",imageUrl, product.code());
+                    try {
+                        downloadAsset(imageFile, imageUrl);
+                    } catch (IOException e) {
+                        logger.error("Unable to download image {}",imageUrl);
+                    }
+                }
+
+            });
         }
     }
 

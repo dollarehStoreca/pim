@@ -11,6 +11,7 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -78,8 +79,19 @@ public class MultiCraft extends ProductSource {
     }
 
     @Override
-    protected File downloadAsset(final String assetUrl) throws IOException {
-        return null;
+    protected void downloadAsset(final File imageFile, final String assetUrl) throws IOException {
+
+
+
+            imageFile.getParentFile().mkdirs();
+            Connection.Response resultImageResponse = session
+                    .newRequest(BASE_URL + assetUrl)
+                    .ignoreContentType(true)
+                    .execute();
+            FileOutputStream out = new FileOutputStream(imageFile);
+            out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
+            out.close();
+
     }
 
     private void browse(final List<String> categories) throws IOException, URISyntaxException {
