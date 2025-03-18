@@ -1,4 +1,4 @@
 /**
  * Basic Classes for Practicing Java Strings.
  */
-package ca.dollareh.vendor;
+package ca.dollareh.pim.vendor;

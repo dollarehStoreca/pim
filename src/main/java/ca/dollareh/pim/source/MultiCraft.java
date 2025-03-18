@@ -1,6 +1,6 @@
-package ca.dollareh.vendor;
+package ca.dollareh.pim.vendor;
 
-import ca.dollareh.core.model.Product;
+import ca.dollareh.pim.model.Product;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.net.URIBuilder;
 import org.jsoup.Connection;
@@ -13,7 +13,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
