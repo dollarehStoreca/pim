@@ -60,61 +60,65 @@ public abstract class ProductSource {
 
         File[] transformedFiles = transformPath.toFile().listFiles(pathname -> pathname.getName().endsWith(".json"));
 
-        Arrays.stream(transformedFiles)
-                .parallel()
-                .forEach(transformedJsonFile -> {
-                    String productCode = transformedJsonFile.getName().replaceAll(".json","");
-                    try {
-                        List<File> originalJsonFiles = findOriginalProductJson(productCode);
+        if(transformedFiles != null) {
+            Arrays.stream(transformedFiles)
+                    .parallel()
+                    .forEach(transformedJsonFile -> {
+                        String productCode = transformedJsonFile.getName().replaceAll(".json","");
+                        try {
+                            List<File> originalJsonFiles = findOriginalProductJson(productCode);
 
-                        if (!originalJsonFiles.isEmpty()) {
+                            if (!originalJsonFiles.isEmpty()) {
 
-                            File originalJsonFile = originalJsonFiles.get(0);
+                                File originalJsonFile = originalJsonFiles.get(0);
 
-                            Product originalProduct = objectMapper
-                                    .readValue(originalJsonFile, Product.class);
+                                Product originalProduct = objectMapper
+                                        .readValue(originalJsonFile, Product.class);
 
-                            File enrichedProductCollectionsFile = new File(enrichmentPath.toFile(),
-                                    originalProduct.code() + ".csv");
+                                File enrichedProductCollectionsFile = new File(enrichmentPath.toFile(),
+                                        originalProduct.code() + ".csv");
 
-                            enrichedProductCollectionsFile.getParentFile().mkdirs();
+                                enrichedProductCollectionsFile.getParentFile().mkdirs();
 
-                            Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
-                                    file.getName()
-                                            .replaceFirst((originalProduct.code()+ COLLECTION_SEPARATOR),"")
-                                            .replaceFirst(".json","").toLowerCase()
+                                Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
+                                        file.getName()
+                                                .replaceFirst((originalProduct.code()+ COLLECTION_SEPARATOR),"")
+                                                .replaceFirst(".json","").toLowerCase()
 
-                            ).collect(Collectors.joining("\n")));
+                                ).collect(Collectors.joining("\n")));
 
-                            Product transformProduct = objectMapper
-                                    .readValue(transformedJsonFile, Product.class);
+                                Product transformProduct = objectMapper
+                                        .readValue(transformedJsonFile, Product.class);
 
-                            Product enrichedProduct = originalProduct.merge(transformProduct);
+                                Product enrichedProduct = originalProduct.merge(transformProduct);
 
-                            Set<ConstraintViolation<Product>> violations = validator.validate(enrichedProduct);
+                                Set<ConstraintViolation<Product>> violations = validator.validate(enrichedProduct);
 
-                            if(violations.isEmpty()) {
-                                File enrichedProductFile = new File(enrichmentPath.toFile(),
-                                        originalProduct.code() + ".json");
+                                if(violations.isEmpty()) {
+                                    File enrichedProductFile = new File(enrichmentPath.toFile(),
+                                            originalProduct.code() + ".json");
 
-                                enrichedProductFile.getParentFile().mkdirs();
+                                    enrichedProductFile.getParentFile().mkdirs();
 
-                                downloadAssets(enrichedProduct);
+                                    downloadAssets(enrichedProduct);
 
-                                Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
-                            }
-                            else {
-                                for (ConstraintViolation<Product> violation : violations) {
-                                    throw new IllegalArgumentException(productCode + " : " + violation.getMessage());
+                                    Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
                                 }
+                                else {
+                                    for (ConstraintViolation<Product> violation : violations) {
+                                        throw new IllegalArgumentException(productCode + " : " + violation.getMessage());
+                                    }
+                                }
+                            } else {
+                                logger.info(this.getClass().getSimpleName() + " does not contain product " + productCode);
                             }
-                        } else {
-                            logger.info(this.getClass().getSimpleName() + " does not contain product " + productCode);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
                         }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                    });
+        }
+
+
     }
 
     protected abstract void login() throws IOException;
