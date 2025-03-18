@@ -11,6 +11,7 @@ import org.jsoup.select.Elements;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class MultiCraft extends ProductSource {
@@ -48,7 +49,7 @@ public class MultiCraft extends ProductSource {
 
             liElements.stream().parallel().forEach(liElement -> {
                 try {
-                    browse(HttpUtil.getRequestParameter(liElement.selectFirst("a").attr("href"), "code"));
+                    browse(List.of(HttpUtil.getRequestParameter(liElement.selectFirst("a").attr("href"), "code")));
                 } catch (IOException | URISyntaxException e) {
                     logger.error("Browsing Failed", e);
                 }
@@ -61,9 +62,9 @@ public class MultiCraft extends ProductSource {
         return null;
     }
 
-    private void browse(final String category) throws IOException {
-        logger.info("Browsing brand {}", category);
-        Document subBrandDocument = getHTMLDocument("/en/brand/subbrands?code=" + category);
+    private void browse(final List<String> categories) throws IOException {
+        logger.info("Browsing brand {}", categories);
+        Document subBrandDocument = getHTMLDocument("/en/brand/subbrands?code=" + categories.getLast());
 
         Elements skusEls = subBrandDocument.select("#skusCards>li");
 
