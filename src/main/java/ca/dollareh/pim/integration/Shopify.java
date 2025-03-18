@@ -17,23 +17,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
+import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.util.Base64;
-import java.util.Collections;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+
+import static org.apache.hc.core5.http.HttpStatus.SC_CREATED;
 
 public class Shopify {
 
@@ -42,11 +42,12 @@ public class Shopify {
     private final String baseUrl;
     private final String accessToken;
 
-    private final ObjectMapper objectMapper;
+    private final Path exportPath;
 
     private final ProductSource productSource;
+    private final Long defaultCollectionId;
 
-    private final Path exportPath;
+    private final ObjectMapper objectMapper;
 
     public Shopify(ProductSource productSource) {
         this.productSource = productSource;
@@ -61,8 +62,20 @@ public class Shopify {
 
         exportPath.toFile().mkdirs();
 
-    }
+        File collectionMappingsFile = new File(exportPath.toFile().getParentFile(), "collection.properties");
 
+        if (collectionMappingsFile.exists()) {
+            Properties cProperties = new Properties();
+            try {
+                cProperties.load(new FileReader(collectionMappingsFile));
+            } catch (IOException e) {
+                logger.error("Collection Mapping Properties does not exists {}",collectionMappingsFile);
+            }
+            defaultCollectionId = Long.parseLong((String) cProperties.get(productSource.getClass().getSimpleName()));
+        } else {
+            defaultCollectionId = null;
+        }
+    }
 
     public void export() throws IOException, InterruptedException {
         Product product = new Product("Sample", "Sample 3" , "Sample", 1L,
@@ -75,25 +88,7 @@ public class Shopify {
         } else {
             create(product);
         }
-
     }
-
-    private Long getProductId(final File productJsonFile) throws IOException {
-        Long productId = null;
-        JsonFactory factory = new JsonFactory();
-        try (JsonParser parser = factory.createParser(productJsonFile)) {
-            while (!parser.isClosed()) {
-                JsonToken token = parser.nextToken();
-                if (token == JsonToken.FIELD_NAME && "id".equals(parser.getCurrentName())) {
-                    parser.nextToken();
-                    productId = parser.getLongValue();
-                    break; // Exit early after finding the required field
-                }
-            }
-        }
-        return productId;
-    }
-
 
     private void create(final Product product) throws IOException, InterruptedException {
 
@@ -103,16 +98,23 @@ public class Shopify {
                 .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(getShopifyProduct(product))))
                 .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
-        if ( response.statusCode() == HttpStatus.SC_CREATED) {
-            Files.writeString(getProductFile(product).toPath(), response.body());
+        if ( response.statusCode() == SC_CREATED) {
+
+            File productJsonFile = getProductFile(product);
+
+            Files.write(productJsonFile.toPath(), response.body(), StandardOpenOption.CREATE);
+
+            Long productId = getProductId(productJsonFile);
+            associateCollection(productId, defaultCollectionId);
+
         } else {
             logger.error("Product {} not created", product.code());
         }
     }
 
-    public void update(Long productId, final Product product) throws IOException, InterruptedException {
+    public void update(final Long productId, final Product product) throws IOException, InterruptedException {
 
         HttpClient client = HttpClient.newHttpClient();
 
@@ -120,10 +122,10 @@ public class Shopify {
                 .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(getShopifyProduct(product))))
                 .build();
 
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
         if ( response.statusCode() == HttpStatus.SC_OK) {
-            Files.writeString(getProductFile(product).toPath(), response.body());
+            Files.write(getProductFile(product).toPath(), response.body());
         } else {
             logger.error("Product {} not updated", product.code());
         }
@@ -133,8 +135,7 @@ public class Shopify {
         return new File(exportPath.toFile(), product.code() + ".json");
     }
 
-
-    public Map<String, Object> getShopifyProduct(final Product product) {
+    private Map<String, Object> getShopifyProduct(final Product product) {
         Map<String, Object> shopifyProduct = new HashMap<>(1);
 
         Map<String, Object> variantMap
@@ -162,15 +163,50 @@ public class Shopify {
         return shopifyProduct;
     }
 
+    public void associateCollection(final Long productId, final Long collectionId) throws IOException, InterruptedException {
 
+        HttpClient client = HttpClient.newHttpClient();
 
+        // Build HTTP request
+        HttpRequest request = getShopifyRequestBuilder("/collects.json")
+                .POST(HttpRequest.BodyPublishers.ofString(
+                        objectMapper.writeValueAsString(
+                            Map.of("collect", Map.of("product_id", productId,
+                            "collection_id",collectionId)))))
+                .build();
+
+        // Send request and get response
+        HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+        if (response.statusCode() == SC_CREATED) {
+            logger.info("Product {} asociated to Collection {}", productId, collectionId);
+        } else {
+            logger.info("Product {} can not be asociated to Collection {}", productId, collectionId);
+        }
+
+    }
+
+    private Long getProductId(final File productJsonFile) throws IOException {
+        Long productId = null;
+        JsonFactory factory = new JsonFactory();
+        try (JsonParser parser = factory.createParser(productJsonFile)) {
+            while (!parser.isClosed()) {
+                JsonToken token = parser.nextToken();
+                if (token == JsonToken.FIELD_NAME && "id".equals(parser.currentName())) {
+                    parser.nextToken();
+                    productId = parser.getLongValue();
+                    break; // Exit early after finding the required field
+                }
+            }
+        }
+        return productId;
+    }
 
     private HttpRequest.Builder getShopifyRequestBuilder(final String url) {
         return HttpRequest.newBuilder()
                 .uri(URI.create(baseUrl + url))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
+                .header("X-Shopify-Access-Token", accessToken)
                 .header("Content-Type", "application/json");
     }
-
-
+    
 }
