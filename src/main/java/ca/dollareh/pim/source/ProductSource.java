@@ -2,6 +2,7 @@ package ca.dollareh.pim.source;
 
 import ca.dollareh.pim.model.Product;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -99,14 +100,35 @@ public abstract class ProductSource {
                                 Set<ConstraintViolation<Product>> violations = validator.validate(enrichedProduct);
 
                                 if(violations.isEmpty()) {
+
                                     File enrichedProductFile = new File(enrichmentPath.toFile(),
                                             originalProduct.code() + ".json");
 
-                                    enrichedProductFile.getParentFile().mkdirs();
+                                    String enrichedProductJson = objectMapper.writeValueAsString(enrichedProduct);
 
-                                    downloadAssets(enrichedProduct);
+                                    if(enrichedProductFile.exists()) {
+                                        JsonNode existingProduct = objectMapper.readTree(enrichedProductFile);
+                                        JsonNode newProduct = objectMapper.readTree(enrichedProductJson);
 
-                                    Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
+                                        if (!existingProduct.equals(newProduct)) {
+                                            Files.writeString(enrichedProductFile.toPath(), enrichedProductJson);
+                                            logger.info("Product(MODIFIED) {} enriched at {}", enrichedProduct.code(), enrichedProductFile);
+                                        } else {
+                                            // logger.debug("Product(UNMODIFIED) {} not enriched at {}", enrichedProduct.code(), enrichedProductFile);
+                                        }
+
+                                    } else {
+                                        downloadAssets(enrichedProduct);
+                                        Files.writeString(enrichedProductFile.toPath(), enrichedProductJson);
+                                        logger.info("Product(NEW) {} enriched at {}", enrichedProduct.code(), enrichedProductFile);
+                                    }
+
+
+
+
+
+
+
                                 }
                                 else {
                                     for (ConstraintViolation<Product> violation : violations) {
@@ -114,7 +136,8 @@ public abstract class ProductSource {
                                     }
                                 }
                             } else {
-                                logger.info(this.getClass().getSimpleName() + " does not contain product " + productCode);
+                                logger.error("{} does not contain product {}",
+                                        this.getClass().getSimpleName(), productCode);
                             }
                         } catch (IOException e) {
                             throw new RuntimeException(e);
