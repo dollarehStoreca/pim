@@ -21,7 +21,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +47,8 @@ public class Shopify {
     private final Long defaultCollectionId;
 
     private final ObjectMapper objectMapper;
+
+    private final String checksumAlgorithm = "SHA-256";
 
     public Shopify(ProductSource productSource) {
         this.productSource = productSource;
@@ -91,17 +96,24 @@ public class Shopify {
 
                 File shopifyProductJsonFile = getProductFile(enrichedProduct);
 
+                boolean changed = false ;
                 if (shopifyProductJsonFile.exists()) {
-                    update(getProductId(shopifyProductJsonFile), enrichedProduct);
+                    if(isModified(enrichedJsonFile)) {
+                        changed = update(getProductId(shopifyProductJsonFile), enrichedProduct);
+                    }
                 } else {
-                    create(enrichedProduct);
+                    changed = create(enrichedProduct);
+                }
+                if(changed) {
+                    generateAndStoreChecksum(enrichedJsonFile );
                 }
 
             }
         }
     }
 
-    private void create(final Product product) throws IOException, InterruptedException {
+    private boolean create(final Product product) throws IOException, InterruptedException {
+        boolean created = false;
         try (HttpClient client = HttpClient.newHttpClient()) {
 
             HttpRequest request = getShopifyRequestBuilder("/products.json").POST(HttpRequest.BodyPublishers.ofString(getShopifyProduct(product))).build();
@@ -120,14 +132,17 @@ public class Shopify {
 
                 logger.info("Product {} created", productId);
 
+                created = true;
+
             } else {
                 logger.error("Product {} not created", product.code());
             }
         }
-
+        return created;
     }
 
-    public void update(final Long productId, final Product product) throws IOException, InterruptedException {
+    public boolean update(final Long productId, final Product product) throws IOException, InterruptedException {
+        boolean updated = false;
         try (HttpClient client = HttpClient.newHttpClient()) {
             HttpRequest request = getShopifyRequestBuilder("/products/" + productId + ".json").PUT(HttpRequest.BodyPublishers.ofString(getShopifyProduct(product))).build();
 
@@ -136,11 +151,13 @@ public class Shopify {
             if (response.statusCode() == HttpStatus.SC_OK) {
                 Files.write(getProductFile(product).toPath(), response.body());
                 logger.info("Product {} updated", productId);
+                updated = true;
             } else {
                 logger.error("Product {} not updated", product.code());
+
             }
         }
-
+        return updated;
     }
 
     private File getProductFile(final Product product) {
@@ -229,6 +246,62 @@ public class Shopify {
 
     private HttpRequest.Builder getShopifyRequestBuilder(final String url) {
         return HttpRequest.newBuilder().uri(URI.create(baseUrl + url)).header("X-Shopify-Access-Token", accessToken).header("Content-Type", "application/json");
+    }
+
+    private void generateAndStoreChecksum(File file) {
+        try {
+            String checksum = getChecksum(file);
+
+            Path cPath = getChecksumPath(file);
+
+            Files.writeString(cPath,  checksum);
+
+            logger.info("generated checksum for {} ", file);
+
+        } catch (IOException | NoSuchAlgorithmException e) {
+            logger.error("Unable to generate checksum for {} ", file);
+        }
+    }
+
+    private Path getChecksumPath(final File file) {
+        return new File(exportPath.toFile(), file.getName() + ".ck").toPath();
+    }
+
+    private boolean isModified(final File file) {
+        Path cPath = getChecksumPath(file);
+        boolean isModified = !cPath.toFile().exists();
+
+        if (!isModified) {
+            try {
+                isModified = !Files.readString(cPath).equals(getChecksum(file));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
+        return isModified;
+    }
+
+    private String getChecksum(final File file) throws IOException, NoSuchAlgorithmException {
+        Path path = file.toPath();
+        byte[] fileBytes = Files.readAllBytes(path);
+
+        // Generate checksum
+        MessageDigest digest = MessageDigest.getInstance(checksumAlgorithm);
+        byte[] checksumBytes = digest.digest(fileBytes);
+        String checksum = file.lastModified() + "$" + bytesToHex(checksumBytes);
+        return checksum;
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            hexString.append(String.format("%02x", b));
+        }
+        return hexString.toString();
     }
 
 }
