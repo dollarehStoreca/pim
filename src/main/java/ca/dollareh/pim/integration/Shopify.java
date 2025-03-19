@@ -70,7 +70,14 @@ public class Shopify {
             }
             defaultCollectionId = Long.parseLong((String) cProperties.get(productSource.getClass().getSimpleName()));
         } else {
-            defaultCollectionId = null;
+            try {
+                Files.writeString(collectionMappingsFile.toPath(),
+                        productSource.getClass().getSimpleName() + "=<COLLECTION_ID_FROM_SHOPIFY>");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            throw new RuntimeException("Collection Mapping not available for " + productSource.getClass().getSimpleName()
+                    + " at "+ collectionMappingsFile.getAbsolutePath());
         }
     }
 
