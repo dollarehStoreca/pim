@@ -2,8 +2,6 @@ package ca.dollareh.pim.source;
 
 import ca.dollareh.pim.model.Product;
 import ca.dollareh.pim.util.HttpUtil;
-import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.net.URIBuilder;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;

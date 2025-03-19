@@ -9,7 +9,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.commons.io.output.FileWriterWithEncoding;
 import org.apache.hc.core5.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +23,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -55,8 +53,6 @@ public class Shopify {
     private final Long defaultCollectionId;
 
     private final ObjectMapper objectMapper;
-
-    private final String checksumAlgorithm = "SHA-256";
 
     public Shopify(ProductSource productSource) {
         this.productSource = productSource;
@@ -117,13 +113,14 @@ public class Shopify {
 
     public void export() throws IOException, InterruptedException {
 
-        File[] enrichedJsonFiles = enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith("AB020A.json"));
+        File[] enrichedJsonFiles = enrichmentPath.toFile()
+                .listFiles((dir, name) -> name.startsWith("CD") && name.endsWith(".json"));
 
         if (enrichedJsonFiles != null) {
             for (File enrichedJsonFile : enrichedJsonFiles) {
                 Product enrichedProduct = objectMapper.readValue(enrichedJsonFile, Product.class);
 
-                File shopifyProductJsonFile = getProductFile(enrichedProduct);
+                File shopifyProductJsonFile = getProductFile(enrichedProduct.code());
 
                 boolean changed = false ;
                 if (shopifyProductJsonFile.exists()) {
@@ -150,16 +147,16 @@ public class Shopify {
             HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
             if (response.statusCode() == SC_CREATED) {
 
-                File productJsonFile = getProductFile(product);
+                File productJsonFile = getProductFile(product.code());
 
                 Files.write(productJsonFile.toPath(), response.body(), StandardOpenOption.CREATE);
 
                 Long productId = getProductId(productJsonFile);
 
+                logger.info("Product {} created", productId);
+
                 associateCollection(productId, defaultCollectionId);
                 createImages(productId, product);
-
-                logger.info("Product {} created", productId);
 
                 created = true;
 
@@ -178,19 +175,18 @@ public class Shopify {
             HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
             if (response.statusCode() == HttpStatus.SC_OK) {
-                Files.write(getProductFile(product).toPath(), response.body());
+                Files.write(getProductFile(product.code()).toPath(), response.body());
                 logger.info("Product {} updated", productId);
                 updated = true;
             } else {
                 logger.error("Product {} not updated", product.code());
-
             }
         }
         return updated;
     }
 
-    private File getProductFile(final Product product) {
-        return new File(exportPath.toFile(), product.code() + ".json");
+    public File getProductFile(final String code) {
+        return new File(exportPath.toFile(), code + ".json");
     }
 
     private String getShopifyProduct(final Product product) throws JsonProcessingException {
@@ -208,16 +204,18 @@ public class Shopify {
         variantMap.put("requires_shipping", true);
         variantMap.put("sku",product.code());
 
-        Map<String, Object> productMap = Map.of("title", product.title(), "body_html", product.description(), "handle", product.code(), "vendor", "Dollareh", "tags", "auto-imported", "variants", List.of(variantMap));
-
+        Map<String, Object> productMap = Map.of("title", product.title(),
+                "body_html", product.description(),
+                "handle", product.code(),
+                "vendor", "Dollareh",
+                "tags", "auto-imported",
+                "variants", List.of(variantMap));
 
         return objectMapper.writeValueAsString(Map.of("product", productMap));
     }
 
     public void associateCollection(final Long productId, final Long collectionId) throws IOException, InterruptedException {
-
         try (HttpClient client = HttpClient.newHttpClient()) {
-
             // Build HTTP request
             HttpRequest request = getShopifyRequestBuilder("/collects.json").POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("collect", Map.of("product_id", productId, "collection_id", collectionId))))).build();
 
@@ -234,7 +232,6 @@ public class Shopify {
 
     public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
         try (HttpClient client = HttpClient.newHttpClient()) {
-
             // Build HTTP request
             HttpRequest.Builder requestBuilder = getShopifyRequestBuilder("/products/" + productId + "/images.json");
 
@@ -268,7 +265,7 @@ public class Shopify {
         }
     }
 
-    private Long getProductId(final File productJsonFile) throws IOException {
+    public Long getProductId(final File productJsonFile) throws IOException {
         Long productId = null;
         JsonFactory factory = new JsonFactory();
         try (JsonParser parser = factory.createParser(productJsonFile)) {
@@ -306,7 +303,7 @@ public class Shopify {
     }
 
 
-    private List<Map<String, Object>> getShopifyCollection() {
+    public List<Map<String, Object>> getShopifyCollection() {
         List<Map<String, Object>> allCollections = new ArrayList<>();
         try (HttpClient client = HttpClient.newHttpClient()) {
             String nextPageUrl = "/custom_collections.json?limit=250"; // Start with first page
@@ -319,7 +316,6 @@ public class Shopify {
                     if (response.statusCode() != 200) {
                         throw new RuntimeException("Failed to fetch Shopify collections: " + response.body());
                     }
-
 
                     Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
                             new TypeReference<>() {
@@ -393,7 +389,7 @@ public class Shopify {
 
             Files.writeString(cPath,  checksum);
 
-            logger.info("generated checksum for {} ", file);
+            logger.debug("generated checksum for {} ", file);
 
         } catch (IOException | NoSuchAlgorithmException e) {
             logger.error("Unable to generate checksum for {} ", file);
@@ -427,6 +423,7 @@ public class Shopify {
         byte[] fileBytes = Files.readAllBytes(path);
 
         // Generate checksum
+        String checksumAlgorithm = "SHA-256";
         MessageDigest digest = MessageDigest.getInstance(checksumAlgorithm);
         byte[] checksumBytes = digest.digest(fileBytes);
         String checksum = file.lastModified() + "$" + bytesToHex(checksumBytes);

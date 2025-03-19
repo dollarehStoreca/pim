@@ -23,11 +23,10 @@ import org.slf4j.LoggerFactory;
 
 class ExcelToJsonTest {
 
+    Logger logger = LoggerFactory.getLogger(ExcelToJsonTest.class);
+
     @Test
     void buildTransfomation() throws IOException {
-
-        Logger logger = LoggerFactory.getLogger(ExcelToJsonTest.class);
-        logger.info("Hello World");
 
         FileInputStream file = new FileInputStream(Paths.get("sample/Multicraft.xlsx").toFile());
         Workbook workbook = new XSSFWorkbook(file);
