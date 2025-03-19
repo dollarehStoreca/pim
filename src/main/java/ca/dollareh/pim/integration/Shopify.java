@@ -111,6 +111,8 @@ public class Shopify {
                 associateCollection(productId, defaultCollectionId);
                 createImages(productId, product);
 
+                logger.info("Product {} created", productId);
+
             } else {
                 logger.error("Product {} not created", product.code());
             }
@@ -126,6 +128,7 @@ public class Shopify {
 
             if (response.statusCode() == HttpStatus.SC_OK) {
                 Files.write(getProductFile(product).toPath(), response.body());
+                logger.info("Product {} updated", productId);
             } else {
                 logger.error("Product {} not updated", product.code());
             }
