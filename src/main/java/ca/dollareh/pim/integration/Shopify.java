@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -194,7 +195,18 @@ public class Shopify {
 
     private String getShopifyProduct(final Product product) throws JsonProcessingException {
 
-        Map<String, Object> variantMap = Map.of("price", product.price(), "compare_at_price", product.discount(), "inventory_quantity", product.inventryQuantity(), "title", "Default Title", "inventory_policy", "deny", "inventory_management", "shopify", "option1", "Default Title", "fulfillment_service", "manual", "taxable", true, "requires_shipping", true);
+        Map<String, Object> variantMap = new HashMap<>();
+        variantMap.put("price", product.price());
+//        variantMap.put("compare_at_price", product.discount());
+        variantMap.put("inventory_quantity", product.inventryQuantity());
+        variantMap.put("title", "Default Title");
+        variantMap.put("inventory_policy", "deny");
+        variantMap.put("inventory_management", "shopify");
+        variantMap.put("option1", "Default Title");
+        variantMap.put("fulfillment_service", "manual");
+        variantMap.put("taxable", true);
+        variantMap.put("requires_shipping", true);
+        variantMap.put("sku",product.code());
 
         Map<String, Object> productMap = Map.of("title", product.title(), "body_html", product.description(), "handle", product.code(), "vendor", "Dollareh", "tags", "auto-imported", "variants", List.of(variantMap));
 
