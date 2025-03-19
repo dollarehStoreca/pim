@@ -190,6 +190,7 @@ public class MultiCraft extends ProductSource {
                 , upc
                 , invertyQty
                 , price
+                , price
                 , discount
                 , imageUrls
         );

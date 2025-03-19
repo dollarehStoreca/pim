@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
 public abstract class ProductSource {
 
     public static final String COLLECTION_SEPARATOR = "-";
-    private static final int CACHE_DURATION = 24;
+    private static final int CACHE_DURATION = 12;
 
     final Logger logger = LoggerFactory.getLogger(ProductSource.class);
 

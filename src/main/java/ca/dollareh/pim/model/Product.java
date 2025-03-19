@@ -6,8 +6,9 @@ public record Product(
         @NotNull(message = "Code not be null") String code,
         @NotNull(message = "Title not be null") String title,
         @NotNull(message = "Description not be null") String description,
-                      Long upc,
-                      Integer inventryQuantity,
+      Long upc,
+      Integer inventryQuantity,
+        @NotNull(message = "Cost not be null") Float cost,
         @NotNull(message = "Price not be null") Float price,
                       Float discount,
                       String[] imageUrls) {
@@ -20,9 +21,9 @@ public record Product(
                 product1.upc == null ? upc : product1.upc,
                 product1.inventryQuantity == null ? inventryQuantity : product1.inventryQuantity,
                 product1.price == null ? price : product1.price,
+                product1.cost == null ? cost : product1.cost,
                 product1.discount == null ? discount : product1.discount,
                 product1.imageUrls == null ? imageUrls : product1.imageUrls
-
         );
     }
 }

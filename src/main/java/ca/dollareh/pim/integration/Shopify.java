@@ -114,7 +114,7 @@ public class Shopify {
     public void export() throws IOException, InterruptedException {
 
         File[] enrichedJsonFiles = enrichmentPath.toFile()
-                .listFiles((dir, name) -> name.startsWith("CD") && name.endsWith(".json"));
+                .listFiles((dir, name) -> name.startsWith("AB020A") && name.endsWith(".json"));
 
         if (enrichedJsonFiles != null) {
             for (File enrichedJsonFile : enrichedJsonFiles) {
@@ -157,6 +157,8 @@ public class Shopify {
 
                 associateCollection(productId, defaultCollectionId);
                 createImages(productId, product);
+                setInventoryItem(productJsonFile, product);
+
 
                 created = true;
 
@@ -167,6 +169,7 @@ public class Shopify {
         return created;
     }
 
+
     public boolean update(final Long productId, final Product product) throws IOException, InterruptedException {
         boolean updated = false;
         try (HttpClient client = HttpClient.newHttpClient()) {
@@ -175,8 +178,12 @@ public class Shopify {
             HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
             if (response.statusCode() == HttpStatus.SC_OK) {
-                Files.write(getProductFile(product.code()).toPath(), response.body());
+                File productJsonFile = getProductFile(product.code());
+                Files.write(productJsonFile.toPath(), response.body());
                 logger.info("Product {} updated", productId);
+
+                setInventoryItem(productJsonFile, product);
+
                 updated = true;
             } else {
                 logger.error("Product {} not updated", product.code());
@@ -225,7 +232,7 @@ public class Shopify {
             if (response.statusCode() == SC_CREATED) {
                 logger.info("Product {} asociated to Collection {}", productId, collectionId);
             } else {
-                logger.info("Product {} can not be associated to Collection {}", productId, collectionId);
+                logger.error("Product {} can not be associated to Collection {}", productId, collectionId);
             }
         }
     }
@@ -264,6 +271,43 @@ public class Shopify {
             }
         }
     }
+
+    private void setInventoryItem(final File productJsonFile, final Product product) throws IOException, InterruptedException {
+        Long inventoryItemId = null;
+        JsonFactory factory = new JsonFactory();
+        try (JsonParser parser = factory.createParser(productJsonFile)) {
+            while (!parser.isClosed()) {
+                JsonToken token = parser.nextToken();
+                if (token == JsonToken.FIELD_NAME && "inventory_item_id".equals(parser.currentName())) {
+                    parser.nextToken();
+                    inventoryItemId = parser.getLongValue();
+                    break; // Exit early after finding the required field
+                }
+            }
+        }
+
+
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            // Build HTTP request
+            HttpRequest request = getShopifyRequestBuilder("/inventory_items/"+inventoryItemId+".json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(
+                            objectMapper.writeValueAsString(
+                                    Map.of("inventory_item",
+                                            Map.of("id", inventoryItemId,
+                                                    "cost", product.cost())))))
+                    .build();
+
+            // Send request and get response
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+            if (response.statusCode() == SC_OK) {
+                logger.info("Inventory item {} set for product {}", inventoryItemId, product.code());
+            } else {
+                logger.error("Inventory item {} not set for product {}", inventoryItemId, product.code());
+            }
+        }
+    }
+
 
     public Long getProductId(final File productJsonFile) throws IOException {
         Long productId = null;
