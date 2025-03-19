@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 public abstract class ProductSource {
 
     public static final String COLLECTION_SEPARATOR = "-";
-    private static final int CACHE_DURATION = 12;
+    private static final int CACHE_DURATION = 24;
 
     final Logger logger = LoggerFactory.getLogger(ProductSource.class);
 
@@ -204,20 +204,28 @@ public abstract class ProductSource {
 
     public void extraxt() throws IOException, URISyntaxException {
         login();
+
+        if (isRecentyModified()) {
+            logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
+        } else {
+            this.browse();
+        }
+
+        this.enrich();
+        logout();
+    }
+
+    private boolean isRecentyModified() {
+        boolean isRecentyModified;
         try {
             FileTime lastModifiedTime = Files.getLastModifiedTime(path);
             Instant lastModifiedInstant = lastModifiedTime.toInstant();
             Instant twelveHoursAgo = Instant.now().minus(CACHE_DURATION, ChronoUnit.HOURS);
-            if (lastModifiedInstant.isAfter(twelveHoursAgo)) {
-                logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
-            } else {
-                this.browse();
-            }
+            isRecentyModified = lastModifiedInstant.isAfter(twelveHoursAgo);
         } catch (IOException e) {
-            logger.error("Error checking folder modification time: {}" , e.getMessage());
+            isRecentyModified = false;
         }
-        this.enrich();
-        logout();
+        return isRecentyModified;
     }
 
     // Builder class
