@@ -69,14 +69,21 @@ class SetupCategoriesTest {
 
                 Long subSubCategoryValue = collectionsMap.get(row.getCell(5).getStringCellValue().trim());
 
-                shopify.associateCollection(productId, subCategoryValue);
-                shopify.associateCollection(productId, subSubCategoryValue);
+                if(subCategoryValue== null) {
+                    logger.error("Collection not Found {}", row.getCell(4).getStringCellValue().trim());
+                } else {
+                    shopify.associateCollection(productId, subCategoryValue);
+                }
 
-                logger.info(row.getRowNum() + " : " + code + " : " + productId+ " : " + subCategoryValue+ " : " + subSubCategoryValue);
+                if(subSubCategoryValue == null) {
+                    logger.error("Collection not Found {}", row.getCell(5).getStringCellValue().trim());
+                } else {
+                    shopify.associateCollection(productId, subSubCategoryValue);
+                }
+
             } else {
-                // logger.error("Product {} not available", code);
+                logger.error("Product {} not available", code);
             }
-
 
         }
 
