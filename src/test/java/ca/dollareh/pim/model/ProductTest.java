@@ -32,7 +32,7 @@ class ProductTest {
         Assertions.assertEquals(merged.code(), "Code1");
         Assertions.assertEquals(merged.title(), "Title2");
 
-        // Assertions.assertEquals(merged.price(), 2.0f);
+        Assertions.assertEquals(merged.price(), 2.0f);
 
     }
 }
