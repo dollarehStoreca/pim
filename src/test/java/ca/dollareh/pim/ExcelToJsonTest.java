@@ -8,6 +8,7 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,6 +41,9 @@ class ExcelToJsonTest {
 
         List<String> codes = new ArrayList<>();
 
+        File transformFolder = new File("workspace/transform/MultiCraft");
+        transformFolder.mkdirs();
+
         int i = 0;
         for (Row row : sheet) {
             if (i != 0) {
@@ -61,16 +65,7 @@ class ExcelToJsonTest {
                     productMap.put("description", row.getCell(7).getStringCellValue());
                     productMap.put("price", row.getCell(11).getNumericCellValue());
 
-                    StringBuilder builder = new StringBuilder("workspace/transform/MultiCraft/");
-
-                    builder.append(code);
-                    builder.append(".json");
-
-                    Path path = Path.of(builder.toString());
-
-                    path.toFile().getParentFile().mkdirs();
-
-                    Files.writeString(path,
+                    Files.writeString(new File(transformFolder,code + ".json").toPath(),
                             objectMapper
                                     .writerWithDefaultPrettyPrinter()
                                     .writeValueAsString(productMap));
