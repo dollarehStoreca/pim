@@ -29,10 +29,10 @@ class ProductTest {
 
         Product merged = original.merge(transform);
 
-        Assertions.assertEquals(merged.code(), "Code1");
-        Assertions.assertEquals(merged.title(), "Title2");
+        Assertions.assertEquals("Code1", merged.code() );
+        Assertions.assertEquals("Title2", merged.title() );
 
-        Assertions.assertEquals(merged.price(), 2.0f);
+        Assertions.assertEquals(2.0f, merged.price());
 
     }
 }

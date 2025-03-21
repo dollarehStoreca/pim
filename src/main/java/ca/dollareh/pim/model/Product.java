@@ -20,10 +20,11 @@ public record Product(
                 product1.description == null ? description : product1.description,
                 product1.upc == null ? upc : product1.upc,
                 product1.inventryQuantity == null ? inventryQuantity : product1.inventryQuantity,
-                product1.price == null ? price : product1.price,
                 product1.cost == null ? cost : product1.cost,
+                product1.price == null ? price : product1.price,
                 product1.discount == null ? discount : product1.discount,
                 product1.imageUrls == null ? imageUrls : product1.imageUrls
         );
     }
+
 }
