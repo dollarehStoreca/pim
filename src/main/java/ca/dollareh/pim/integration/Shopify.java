@@ -114,7 +114,7 @@ public class Shopify {
     public void export() throws IOException, InterruptedException {
 
         File[] enrichedJsonFiles = enrichmentPath.toFile()
-                .listFiles((dir, name) -> name.startsWith("AB020A") && name.endsWith(".json"));
+                .listFiles((dir, name) -> name.startsWith("BD303B") && name.endsWith(".json"));
 
         if (enrichedJsonFiles != null) {
             for (File enrichedJsonFile : enrichedJsonFiles) {
@@ -201,7 +201,7 @@ public class Shopify {
         Map<String, Object> variantMap = new HashMap<>();
         variantMap.put("price", product.price());
 //        variantMap.put("compare_at_price", product.discount());
-        variantMap.put("inventory_quantity", product.inventryQuantity());
+        variantMap.put("inventory_quantity", product.inventoryQuantity());
         variantMap.put("title", "Default Title");
         variantMap.put("inventory_policy", "deny");
         variantMap.put("inventory_management", "shopify");

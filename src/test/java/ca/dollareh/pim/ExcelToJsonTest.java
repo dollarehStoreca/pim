@@ -46,8 +46,6 @@ class ExcelToJsonTest {
                 String code = row.getCell(1).getStringCellValue().trim();
                 productMap = new HashMap<>();
 
-
-
                 if (code.isEmpty()) {
                     break;
                 }
@@ -61,8 +59,6 @@ class ExcelToJsonTest {
                 System.out.println(i + " : " + code);
 
                     productMap.put("description", row.getCell(7).getStringCellValue());
-                    productMap.put("inventryQuantity", row.getCell(9).getNumericCellValue());
-                    productMap.put("discount", row.getCell(10).getNumericCellValue());
                     productMap.put("price", row.getCell(11).getNumericCellValue());
 
                     StringBuilder builder = new StringBuilder("workspace/transform/MultiCraft/");
@@ -78,8 +74,6 @@ class ExcelToJsonTest {
                             objectMapper
                                     .writerWithDefaultPrettyPrinter()
                                     .writeValueAsString(productMap));
-
-
 
             }
             i++;
