@@ -14,7 +14,7 @@ class ShopifyTest {
     final Logger logger = LoggerFactory.getLogger(ShopifyTest.class);
 
     @Test
-    void testUpdateWebsite() throws IOException {
+    void testUpdateWebsite() throws IOException, InterruptedException {
         ProductSource productSource = ProductSource
                 .from(MultiCraft.class)
                 .onNew(newProduct -> {

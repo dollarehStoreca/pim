@@ -9,6 +9,7 @@ module my.module {
     requires com.google.common;
     requires jakarta.validation;
     requires org.apache.poi.ooxml;
+    requires org.apache.commons.io;
 
     exports ca.dollareh.pim.model;
     opens ca.dollareh.pim.model;

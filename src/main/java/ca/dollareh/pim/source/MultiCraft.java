@@ -1,8 +1,7 @@
 package ca.dollareh.pim.source;
 
 import ca.dollareh.pim.model.Product;
-import org.apache.hc.core5.http.NameValuePair;
-import org.apache.hc.core5.net.URIBuilder;
+import ca.dollareh.pim.util.HttpUtil;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,21 +31,8 @@ public class MultiCraft extends ProductSource {
     }
 
     @Override
-    protected void browse() throws IOException, URISyntaxException {
-
-
-        browse(new ArrayList<>(), session);
-
-
-    }
-
-    protected void logout() throws IOException {
-        session.newRequest(BASE_URL + "/en/user/logout")
-                .get();
-    }
-
     protected void login() throws IOException {
-
+        logger.info("Logging into Multicraft");
         Document langingPage = session.newRequest(BASE_URL +"/en")
                 .get();
 
@@ -59,11 +45,42 @@ public class MultiCraft extends ProductSource {
                 .post();
     }
 
-    protected File downloadAsset(final String assetUrl) throws IOException {
+    @Override
+    protected void logout() throws IOException {
+        logger.info("Logged out from Multicraft");
 
-        File imageFile = getAssetFile(assetUrl);
+        session.newRequest(BASE_URL + "/en/user/logout")
+                .get();
+    }
 
-        if(!imageFile.exists()) {
+    @Override
+    protected void browse() throws IOException {
+        logger.info("Browsing Multicraft");
+        Document document = getHTMLDocument("/en/brand/");
+
+        // Get Sub Categories
+
+        Element ulElement = document.selectFirst("ul.brandsList");
+        if(ulElement != null) {
+            Elements liElements = ulElement.children();
+
+            liElements.stream().parallel().forEach(liElement -> {
+                try {
+                    browse(List.of(HttpUtil.getRequestParameter(liElement.selectFirst("a").attr("href"), "code")));
+                } catch (IOException | URISyntaxException e) {
+                    logger.error("Browsing Failed", e);
+                }
+            });
+        }
+
+
+    }
+
+    @Override
+    protected void downloadAsset(final File imageFile, final String assetUrl) throws IOException {
+
+
+
             imageFile.getParentFile().mkdirs();
             Connection.Response resultImageResponse = session
                     .newRequest(BASE_URL + assetUrl)
@@ -72,49 +89,38 @@ public class MultiCraft extends ProductSource {
             FileOutputStream out = new FileOutputStream(imageFile);
             out.write(resultImageResponse.bodyAsBytes());  // resultImageResponse.body() is where the image's contents are.
             out.close();
-        }
-        return imageFile;
+
     }
 
-
-    public void browse(final List<String> categoryPaths, Connection session) throws IOException, URISyntaxException {
-
-        Document document = getHTMLDocument(session, "/en/brand" + (categoryPaths.isEmpty()? "" : "/subbrands?code=" + categoryPaths.getLast()));
+    private void browse(final List<String> categories) throws IOException, URISyntaxException {
+        logger.info("Browsing brand {}", categories);
+        Document subBrandDocument = getHTMLDocument("/en/brand/subbrands?code=" + categories.getLast());
 
         // Get Products
 
-        Elements skusEls = document.select("#skusCards>li");
+        Elements skusEls = subBrandDocument.select("#skusCards>li");
 
         skusEls.stream().parallel().forEach(skusEl -> {
+            String productCode = skusEl.selectFirst(".summary-id").text().trim();
             try {
-                onProductDiscovery(categoryPaths,
-                        getProduct(skusEl.selectFirst(".summary-id").text().trim(), session));
+                onProductDiscovery(categories, getProduct(productCode));
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                logger.error("Product Not Obtained {}", productCode);
             }
         });
 
+
         // Get Sub Categories
 
-        Elements brandsEls = document.select("ul.brandsList>li>a");
+        Elements brandsEls = subBrandDocument.select("ul.brandsList>li>a");
 
         for (Element brandsAnchorEl : brandsEls) {
-            new URIBuilder(brandsAnchorEl.attr("href"))
-                    .getQueryParams()
-                    .stream()
-                    .filter(nameValuePair -> nameValuePair.getName().equals("code"))
-                    .findFirst()
-                    .map(NameValuePair::getValue)
-                    .ifPresent(code -> {
-                        try {
-                            List<String> subCategoryPath = new ArrayList<>(categoryPaths);
-                            subCategoryPath.add(code.trim());
-                            browse(subCategoryPath, session);
-                        } catch (IOException | URISyntaxException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
+            String code = HttpUtil.getRequestParameter(brandsAnchorEl.attr("href"), "code");
+            List<String> subCategoryPath = new ArrayList<>(categories);
+            subCategoryPath.add(code);
+            browse(subCategoryPath);
         }
+
     }
 
     /**
@@ -123,10 +129,9 @@ public class MultiCraft extends ProductSource {
      * @return Product
      * @throws IOException
      */
-    private Product getProduct(final String productCode,
-                               Connection session) throws IOException {
+    private Product getProduct(final String productCode) throws IOException {
 
-        Document doc = getHTMLDocument(session, "/en/brand/sku?id=" + productCode);
+        Document doc = getHTMLDocument("/en/brand/sku?id=" + productCode);
 
         Elements imageEls = doc.select("#img-previews>li>img");
 
@@ -185,12 +190,13 @@ public class MultiCraft extends ProductSource {
                 , upc
                 , invertyQty
                 , price
+                , price
                 , discount
                 , imageUrls
         );
     }
 
-    private Document getHTMLDocument(Connection session, final String url) throws IOException {
+    private Document getHTMLDocument(final String url) throws IOException {
         return session.newRequest(BASE_URL + url).get();
     }
 }

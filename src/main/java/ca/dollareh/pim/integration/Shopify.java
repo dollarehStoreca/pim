@@ -3,522 +3,483 @@ package ca.dollareh.pim.integration;
 import ca.dollareh.pim.model.Product;
 import ca.dollareh.pim.source.ProductSource;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.hc.core5.net.URIBuilder;
-import org.jsoup.UncheckedIOException;
+import org.apache.hc.core5.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Properties;
+
+import static org.apache.hc.core5.http.HttpStatus.SC_CREATED;
+import static org.apache.hc.core5.http.HttpStatus.SC_OK;
 
 public class Shopify {
 
     final Logger logger = LoggerFactory.getLogger(Shopify.class);
 
     private final String baseUrl;
+    private final String accessToken;
 
     private final Path exportPath;
-
-    private final ObjectMapper objectMapper;
+    private final Path enrichmentPath;
 
     private final ProductSource productSource;
+    private final Long defaultCollectionId;
 
-    private final File collectionMappingsFile;
-    private final Properties collectionMappings;
-
-    private final String defaultCollectionId;
+    private final ObjectMapper objectMapper;
 
     public Shopify(ProductSource productSource) {
         this.productSource = productSource;
 
-        baseUrl = System.getenv("SHOPIFY_BASE_URL");
-
-        exportPath = Path.of("workspace/export/" + getClass().getSimpleName() + "/" + productSource.getClass().getSimpleName());
-
-        exportPath.toFile().mkdirs();
+        baseUrl = "https://" + System.getenv("SHOPIFY_STORE_URL") + "/admin/api/2025-01";
+        accessToken = System.getenv("SHOPIFY_ACCESS_TOKEN");
 
         objectMapper = new ObjectMapper();
         objectMapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
 
-        collectionMappingsFile = new File(exportPath.toFile(), "collection.properties");
-        collectionMappings = new Properties();
+        exportPath = Path.of("workspace/export/" + getClass().getSimpleName() + "/" + productSource.getClass().getSimpleName());
+        enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
-        File rootColPropsFile = new File(collectionMappingsFile.getParentFile().getParentFile(), collectionMappingsFile.getName());
-        if (rootColPropsFile.exists()) {
+        exportPath.toFile().mkdirs();
+
+        File collectionMappingsFile = new File(exportPath.toFile().getParentFile(), "collection.properties");
+
+        if (collectionMappingsFile.exists()) {
             Properties cProperties = new Properties();
-            try {
-                cProperties.load(new FileReader(rootColPropsFile));
+            try(FileReader fileReader = new FileReader(collectionMappingsFile)) {
+                cProperties.load(fileReader);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                logger.error("Collection Mapping Properties does not exists {}", collectionMappingsFile);
             }
-
-            defaultCollectionId = (String) cProperties.get(productSource.getClass().getSimpleName());
+            String cIdStr = (String) cProperties.get(productSource.getClass().getSimpleName());
+            if(cIdStr == null) {
+                Optional<Map<String, Object>> defaultCollection =  getDefaultCollection();
+                if(defaultCollection.isPresent()) {
+                    defaultCollectionId = (Long) defaultCollection.get().get("id");
+                    cProperties.put(productSource.getClass().getSimpleName(),defaultCollectionId.toString());
+                    try (FileWriter fileWriter = new FileWriter(collectionMappingsFile)){
+                        cProperties.store(fileWriter, "Updated with " + defaultCollection.get().get("title"));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }else {
+                    throw new RuntimeException("Collection Mapping not available for " + productSource.getClass().getSimpleName());
+                }
+            } else {
+                defaultCollectionId = Long.parseLong(cIdStr);
+            }
 
         } else {
-            defaultCollectionId = null;
-        }
-
-        if(collectionMappingsFile.exists()) {
-            try {
-                collectionMappings.load(new FileInputStream(collectionMappingsFile));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-    }
-
-    public Map<String, Object> createCollection(String title,List<String> downSteamPaths) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
-
-        Map<String, Object> collectionMap = new HashMap();
-        collectionMap.put("title", title);
-
-        if( downSteamPaths != null && !downSteamPaths.isEmpty()) {
-            Map<String, Object> metaFoiledsMap = new HashMap();
-            metaFoiledsMap.put("key", "downstream_collection_paths");
-            metaFoiledsMap.put("type", "list.single_line_text_field");
-            metaFoiledsMap.put("namespace", "vendor");
-            metaFoiledsMap.put("value", objectMapper.writeValueAsString(downSteamPaths));
-
-            collectionMap.put("metafields", List.of(metaFoiledsMap));
-        }
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/custom_collections.json"))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper
-                        .writeValueAsString(Map.of("custom_collection", collectionMap))))
-                .build();
-
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        return objectMapper.readValue(response.body()
-                , new TypeReference<>() {
-                });
-    }
-
-    public void createCollectionMappings() {
-        Map<Long, Map<String, Object>> collectionsMap =  getShopifyCollection();
-
-
-        collectionsMap.entrySet().stream().forEach(longMapEntry -> {
-            List<Map<String, Object>> metaFields = getMetafields(longMapEntry.getKey());
-            if(!metaFields.isEmpty()) {
-                metaFields.stream()
-                        .filter(metaFieldMap -> metaFieldMap.get("key").equals("downstream_collection_paths"))
-                        .forEach(metaFieldMap -> {
-                            List<String> paths = null;
-                            try {
-                                paths = objectMapper.readerForListOf(String.class).readValue(metaFieldMap.get("value").toString());
-                                if(!paths.isEmpty()) {
-                                    paths.forEach(s -> {
-                                        collectionMappings.put(s, longMapEntry.getKey().toString());
-                                    });
-                                }
-                            } catch (JsonProcessingException e) {
-                                throw new RuntimeException(e);
-                            }
-
-                        });
-            }
-
-        });
-
-        try {
-            collectionMappings.store(new FileOutputStream(collectionMappingsFile),"Updated for Product Induction");
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
-
-    public void export() throws IOException {
-
-        Path enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
-
-        List<File> enrichedJsonFiles = List.of(enrichmentPath.toFile().listFiles((dir, name) -> name.endsWith(".json")));
-
-
-        enrichedJsonFiles.stream().forEach(enrichedJsonFile -> {
-            logger.info("Creating Product " + enrichedJsonFile);
-            syncProduct(enrichedJsonFile);
-        });
-
-
-
-
-    }
-
-    private void syncProduct(File enrichedJsonFile) {
-        try {
-
-            Product enrichedProduct = objectMapper
-                    .readValue(enrichedJsonFile, Product.class);
-
-            Map<String, Object> shopifyProduct = getShopifyProduct(enrichedProduct);
-
-            File[] jsonFiles = exportPath.toFile().listFiles((dir, name) -> name.startsWith(enrichedProduct.code()));
-
-
-            File shopifyProductFile = null;
-
-            if (jsonFiles != null && jsonFiles.length == 1) {
-
-                shopifyProductFile = jsonFiles[0];
-
-                JsonNode existingShoppifyProduct = objectMapper.readTree(shopifyProductFile);
-
-                JsonNode newShoppifyProduct = objectMapper.readTree(objectMapper.writeValueAsString(shopifyProduct));
-
-                if (!existingShoppifyProduct.equals(newShoppifyProduct)) {
-                    String shopifyProductId = shopifyProductFile.getName()
-                            .replaceFirst(enrichedProduct.code()+"-","")
-                            .replace(".json","");
-                    update(shopifyProductId, shopifyProduct);
+            Optional<Map<String, Object>> defaultCollection =  getDefaultCollection();
+            if(defaultCollection.isPresent()) {
+                try {
+                    defaultCollectionId = (Long) defaultCollection.get().get("id");
+                    Files.writeString(collectionMappingsFile.toPath(),
+                            productSource.getClass().getSimpleName() + "=" + defaultCollectionId);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
                 }
             } else {
+                throw new RuntimeException("Collection Mapping not available for " + productSource.getClass().getSimpleName());
+            }
+        }
+    }
 
-                Map<String, Object> createdProduct = create(shopifyProduct);
+    public void export() throws IOException, InterruptedException {
 
-                if (createdProduct.get("product") != null ) {
-                    Long id = (Long) ((Map<String, Object>) createdProduct.get("product")).get("id");
+        File[] enrichedJsonFiles = enrichmentPath.toFile()
+                .listFiles((dir, name) -> name.startsWith("BD303B") && name.endsWith(".json"));
 
-                    if(id == null) {
-                        logger.error("Unable to create product : " + enrichedProduct.code());
-                    } else {
-                        shopifyProductFile = new File(exportPath.toFile(), enrichedProduct.code() + "-" + id + ".json");
+        if (enrichedJsonFiles != null) {
+            for (File enrichedJsonFile : enrichedJsonFiles) {
+                Product enrichedProduct = objectMapper.readValue(enrichedJsonFile, Product.class);
 
-                        if(defaultCollectionId != null) {
-                            associateCollection(id, defaultCollectionId);
-                        }
+                File shopifyProductJsonFile = getProductFile(enrichedProduct.code());
 
-                        createImages(id, enrichedProduct);
+                boolean changed = false ;
+                if (shopifyProductJsonFile.exists()) {
+                    if(isModified(enrichedJsonFile)) {
+                        changed = update(getProductId(shopifyProductJsonFile), enrichedProduct);
                     }
                 } else {
-                    logger.error("Unable to create product : " + createdProduct);
+                    changed = create(enrichedProduct);
+                }
+                if(changed) {
+                    generateAndStoreChecksum(enrichedJsonFile );
                 }
 
-
-                List<List<String>> originalCategories = productSource.getCollection(enrichedProduct.code());
-
-                // There are Categories associated with the product.
-                // We need to find respective Collection IDs
-                if (!originalCategories.isEmpty()){
-//                        originalCategories.forEach(categoryList -> {
-//                            do {
-//                                String path = productSource.getClass().getSimpleName() +
-//                                        "-" +
-//                                        categoryList.stream().collect(Collectors.joining("-"));
-//                                String collectionId = (String) collectionMappings.get(path);
-//                                //logger.info(collectionId);
-//                                if(collectionId == null){
-//                                    logger.info(path + " not found");
-//                                } else {
-//                                    try {
-//                                        associateCollection(id, collectionId);
-//                                    } catch (IOException | InterruptedException e) {
-//                                        throw new RuntimeException(e);
-//                                    }
-//                                }
-//                                List<String> allExceptLast = new ArrayList<>();
-//                                for (int j = 0; j < categoryList.size() -1; j++) {
-//                                    allExceptLast.add(categoryList.get(j));
-//                                }
-//                                categoryList = allExceptLast;
-//                            }while(!categoryList.isEmpty());
-//
-//
-//                        });
-                }
             }
-
-            if(shopifyProductFile == null) {
-                logger.error("Unable to Create Product for " + shopifyProductFile);
-            } else {
-                objectMapper.writeValue(shopifyProductFile, shopifyProduct);
-            }
-
-
-        } catch (IOException | InterruptedException e) {
-            logger.info("Unable to Create Image for " + enrichedJsonFile);
         }
     }
 
-    public Map<String, Object> getShopifyProduct(final Product product) {
-        Map<String, Object> shopifyProduct = new HashMap<>(1);
+    private boolean create(final Product product) throws IOException, InterruptedException {
+        boolean created = false;
+        try (HttpClient client = HttpClient.newHttpClient()) {
 
-        Map<String, Object> variantMap
-                = Map.of("price", product.price(),
-                "compare_at_price", product.discount(),
-                "inventory_quantity", product.inventryQuantity(),
-                "title", "Default Title",
-                "inventory_policy", "deny" ,
-                "inventory_management","shopify",
-                "option1" ,"Default Title",
-                "fulfillment_service", "manual",
-                "taxable", true,
-                "requires_shipping", true);
+            HttpRequest request = getShopifyRequestBuilder("/products.json").POST(HttpRequest.BodyPublishers.ofString(getShopifyProduct(product))).build();
 
-        Map<String, Object> productMap
-                = Map.of("title", product.title(),
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() == SC_CREATED) {
+
+                File productJsonFile = getProductFile(product.code());
+
+                Files.write(productJsonFile.toPath(), response.body(), StandardOpenOption.CREATE);
+
+                Long productId = getProductId(productJsonFile);
+
+                logger.info("Product {} created", productId);
+
+                associateCollection(productId, defaultCollectionId);
+                createImages(productId, product);
+                setInventoryItem(productJsonFile, product);
+
+
+                created = true;
+
+            } else {
+                logger.error("Product {} not created", product.code());
+            }
+        }
+        return created;
+    }
+
+
+    public boolean update(final Long productId, final Product product) throws IOException, InterruptedException {
+        boolean updated = false;
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            HttpRequest request = getShopifyRequestBuilder("/products/" + productId + ".json").PUT(HttpRequest.BodyPublishers.ofString(getShopifyProduct(product))).build();
+
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+            if (response.statusCode() == HttpStatus.SC_OK) {
+                File productJsonFile = getProductFile(product.code());
+                Files.write(productJsonFile.toPath(), response.body());
+                logger.info("Product {} updated", productId);
+
+                setInventoryItem(productJsonFile, product);
+
+                updated = true;
+            } else {
+                logger.error("Product {} not updated", product.code());
+            }
+        }
+        return updated;
+    }
+
+    public File getProductFile(final String code) {
+        return new File(exportPath.toFile(), code + ".json");
+    }
+
+    private String getShopifyProduct(final Product product) throws JsonProcessingException {
+
+        Map<String, Object> variantMap = new HashMap<>();
+        variantMap.put("price", product.price());
+//        variantMap.put("compare_at_price", product.discount());
+        variantMap.put("inventory_quantity", product.inventoryQuantity());
+        variantMap.put("title", "Default Title");
+        variantMap.put("inventory_policy", "deny");
+        variantMap.put("inventory_management", "shopify");
+        variantMap.put("option1", "Default Title");
+        variantMap.put("fulfillment_service", "manual");
+        variantMap.put("taxable", true);
+        variantMap.put("requires_shipping", true);
+        variantMap.put("sku",product.code());
+
+        Map<String, Object> productMap = Map.of("title", product.title(),
                 "body_html", product.description(),
                 "handle", product.code(),
-                "vendor" , "Dollareh",
-                "tags" , "auto-imported",
+                "vendor", "Dollareh",
+                "tags", "auto-imported",
                 "variants", List.of(variantMap));
 
-        shopifyProduct.put("product", productMap);
-
-        return shopifyProduct;
+        return objectMapper.writeValueAsString(Map.of("product", productMap));
     }
 
-    public Map<String, Object> associateCollection(final Long productId, String collectionId) throws IOException, InterruptedException {
+    public void associateCollection(final Long productId, final Long collectionId) throws IOException, InterruptedException {
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            // Build HTTP request
+            HttpRequest request = getShopifyRequestBuilder("/collects.json").POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("collect", Map.of("product_id", productId, "collection_id", collectionId))))).build();
 
-        HttpClient client = HttpClient.newHttpClient();
+            // Send request and get response
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
-        Map<String, Object> shopifyCollection = new HashMap<>(2);
-
-        shopifyCollection.put("product_id", productId);
-
-
-        if (collectionId != null) {
-            shopifyCollection.put("collection_id",collectionId);
+            if (response.statusCode() == SC_CREATED) {
+                logger.info("Product {} asociated to Collection {}", productId, collectionId);
+            } else {
+                logger.error("Product {} can not be associated to Collection {}", productId, collectionId);
+            }
         }
-
-        ;
-
-        // Build HTTP request
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/collects.json"))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(Map.of("collect", shopifyCollection))))
-                .build();
-
-        // Send request and get response
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        return objectMapper.readValue(response.body()
-                , new TypeReference<>() {
-                });
-
     }
 
-    public void createImages(final Long productId, Product product) {
+    public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            // Build HTTP request
+            HttpRequest.Builder requestBuilder = getShopifyRequestBuilder("/products/" + productId + "/images.json");
 
-        for (String imageUrl: product.imageUrls()) {
-            try {
+            for (String imageUrl : product.imageUrls()) {
                 File imageFile = productSource.getAssetFile(imageUrl);
-                createImage(productId, imageFile.toPath());
-            }
-            catch (UncheckedIOException |
-                   IOException | InterruptedException e) {
-                logger.info("Unable to Upload Image for " + productId);
+
+                // Convert Image to Base64
+                String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(imageFile.toPath()));
+
+                // Create JSON request body
+                String requestBody = """
+                        {
+                          "image": {
+                            "attachment": "%s"
+                          }
+                        }
+                        """.formatted(base64Image);
+
+                HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build();
+
+                // Send request and get response
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+                if (response.statusCode() == SC_OK) {
+                    logger.info("Image {} upload for product {}", imageUrl, product.code());
+                } else {
+                    logger.error("Image {} not upload for product {}", imageUrl, product.code());
+                }
+
             }
         }
-
-
-
     }
 
-
-    public Map<String, Object> create(Map<String, Object> shopifyProduct) throws IOException, InterruptedException {
-
-        HttpClient client = HttpClient.newHttpClient();
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/products.json"))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(shopifyProduct)))
-                .build();
-
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        return objectMapper.readValue(response.body()
-                , new TypeReference<>() {
-                });
-    }
-
-    public Long getShopifyCollection(String title) throws URISyntaxException {
-        HttpClient client = HttpClient.newHttpClient();
-        Long collectionId = null;
-
-        URI uri = new URIBuilder(baseUrl + "/custom_collections.json")
-                .addParameter("title", title)
-                .build();
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(uri.toString()))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
-
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("Failed to fetch Shopify collections: " + response.body());
-            }
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
-                    new TypeReference<>() {});
-
-            Map<Long, Map<String, Object>> collectionsMap = new HashMap<>();
-            List<Map<String, Object>> collections = responseBody.get("custom_collections");
-
-            if (collections != null) {
-                for (Map<String, Object> collection : collections) {
-                    collectionId = ((Number) collection.get("id")).longValue();
+    private void setInventoryItem(final File productJsonFile, final Product product) throws IOException, InterruptedException {
+        Long inventoryItemId = null;
+        JsonFactory factory = new JsonFactory();
+        try (JsonParser parser = factory.createParser(productJsonFile)) {
+            while (!parser.isClosed()) {
+                JsonToken token = parser.nextToken();
+                if (token == JsonToken.FIELD_NAME && "inventory_item_id".equals(parser.currentName())) {
+                    parser.nextToken();
+                    inventoryItemId = parser.getLongValue();
+                    break; // Exit early after finding the required field
                 }
             }
+        }
 
-            return collectionId;
-        } catch (Exception e) {
-            throw new RuntimeException("Error fetching Shopify collections", e);
+
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            // Build HTTP request
+            HttpRequest request = getShopifyRequestBuilder("/inventory_items/"+inventoryItemId+".json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(
+                            objectMapper.writeValueAsString(
+                                    Map.of("inventory_item",
+                                            Map.of("id", inventoryItemId,
+                                                    "cost", product.cost())))))
+                    .build();
+
+            // Send request and get response
+            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+            if (response.statusCode() == SC_OK) {
+                logger.info("Inventory item {} set for product {}", inventoryItemId, product.code());
+            } else {
+                logger.error("Inventory item {} not set for product {}", inventoryItemId, product.code());
+            }
         }
     }
 
-    /**
-     * Gets all the shopify collections as Map.
-     * Key os the Map is Collection Id
-     * Value of the Map is Collection Object as Map<String, Object>
-     * @return collectionsMap
-     */
-    public Map<Long, Map<String, Object>> getShopifyCollection() {
-        HttpClient client = HttpClient.newHttpClient();
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl  + "/custom_collections.json?limit=250"))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
-
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("Failed to fetch Shopify collections: " + response.body());
-            }
-
-            ObjectMapper objectMapper = new ObjectMapper();
-            Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
-                    new TypeReference<>() {});
-
-            Map<Long, Map<String, Object>> collectionsMap = new HashMap<>();
-            List<Map<String, Object>> collections = responseBody.get("custom_collections");
-
-            if (collections != null) {
-                for (Map<String, Object> collection : collections) {
-                    Long id = ((Number) collection.get("id")).longValue();
-                    collectionsMap.put(id, collection);
+    public Long getProductId(final File productJsonFile) throws IOException {
+        Long productId = null;
+        JsonFactory factory = new JsonFactory();
+        try (JsonParser parser = factory.createParser(productJsonFile)) {
+            while (!parser.isClosed()) {
+                JsonToken token = parser.nextToken();
+                if (token == JsonToken.FIELD_NAME && "id".equals(parser.currentName())) {
+                    parser.nextToken();
+                    productId = parser.getLongValue();
+                    break; // Exit early after finding the required field
                 }
             }
-
-            return collectionsMap;
-        } catch (Exception e) {
-            throw new RuntimeException("Error fetching Shopify collections", e);
         }
+        return productId;
+    }
+
+    private Optional<Map<String, Object>> getDefaultCollection() {
+        List<Map<String, Object>> collections = getShopifyCollection(); // The value you're searching for
+
+        return collections.stream()
+                .filter(this::isVendor)
+                .findFirst();
+    }
+
+    private boolean isVendor(Map<String, Object> collection) {
+        Long collectionId = (Long) collection.get("id");
+        List<Map<String, Object>> metaFields = getMetafields(collectionId);
+
+        Map<String, Object> objectMap = metaFields.stream().filter(metaField ->
+                metaField.get("namespace").equals("product")
+                        && metaField.get("key").equals("vendor")
+                        && metaField.get("value").toString().contains("\"" + productSource.getClass().getSimpleName() + "\"")
+        ).findFirst().orElse(null);
+
+        return objectMap != null ;
+    }
+
+
+    public List<Map<String, Object>> getShopifyCollection() {
+        List<Map<String, Object>> allCollections = new ArrayList<>();
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            String nextPageUrl = "/custom_collections.json?limit=250"; // Start with first page
+
+            try {
+                while (nextPageUrl != null) {
+                    HttpRequest request = getShopifyRequestBuilder(nextPageUrl).GET().build();
+                    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+                    if (response.statusCode() != 200) {
+                        throw new RuntimeException("Failed to fetch Shopify collections: " + response.body());
+                    }
+
+                    Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
+                            new TypeReference<>() {
+                            });
+
+                    List<Map<String, Object>> collections = responseBody.get("custom_collections");
+                    if (collections != null) {
+                        allCollections.addAll(collections);
+                    }
+
+                    // Check for pagination links
+                    Optional<String> nextPageLink = response.headers()
+                            .allValues("Link")
+                            .stream()
+                            .flatMap(link -> Arrays.stream(link.split(",")))
+                            .filter(link -> link.contains("rel=\"next\""))
+                            .findFirst();
+
+                    if (nextPageLink.isPresent()) {
+                        String link = nextPageLink.get();
+                        int start = link.indexOf("<") + 1;
+                        int end = link.indexOf(">");
+                        nextPageUrl = link.substring(start, end).replace(baseUrl, "");
+                    } else {
+                        nextPageUrl = null; // No more pages
+                    }
+                }
+            } catch (Exception e) {
+                throw new RuntimeException("Error fetching Shopify collections", e);
+            }
+        }
+
+        return allCollections;
     }
 
     private List<Map<String, Object>> getMetafields(Long collectionId) {
-        HttpClient client = HttpClient.newHttpClient();
+        try (HttpClient client = HttpClient.newHttpClient()) {
 
-        String metafieldsUrl = baseUrl + "/collections/" + collectionId + "/metafields.json";
+            HttpRequest request = getShopifyRequestBuilder("/collections/" + collectionId + "/metafields.json")
+                    .GET()
+                    .build();
 
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(metafieldsUrl))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
+            try {
+                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-        try {
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                if (response.statusCode() != 200) {
+                    throw new RuntimeException("Failed to fetch metafields for collection " + collectionId);
+                }
 
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("Failed to fetch metafields for collection " + collectionId);
+                Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
+                        new TypeReference<>() {
+                        });
+
+                return responseBody.getOrDefault("metafields", Collections.emptyList());
+            } catch (Exception e) {
+                throw new RuntimeException("Error fetching metafields for collection " + collectionId, e);
             }
-
-            Map<String, List<Map<String, Object>>> responseBody = objectMapper.readValue(response.body(),
-                    new TypeReference<>() {
-                    });
-
-            return responseBody.getOrDefault("metafields", Collections.emptyList());
-        } catch (Exception e) {
-            throw new RuntimeException("Error fetching metafields for collection " + collectionId, e);
         }
     }
 
 
-    public Map<String, Object> update(String productId, Map<String, Object> shopifyProduct) throws IOException, InterruptedException {
-
-        HttpClient client = HttpClient.newHttpClient();
-
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/products/" + productId + ".json"))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .PUT(HttpRequest.BodyPublishers.ofString(objectMapper.writeValueAsString(shopifyProduct)))
-                .build();
-
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        return objectMapper.readValue(response.body()
-                , new TypeReference<>() {
-                });
+    private HttpRequest.Builder getShopifyRequestBuilder(final String url) {
+        return HttpRequest.newBuilder().uri(URI.create(baseUrl + url)).header("X-Shopify-Access-Token", accessToken).header("Content-Type", "application/json");
     }
 
-    private void createImage(Long productId, Path productImage) throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
+    private void generateAndStoreChecksum(File file) {
+        try {
+            String checksum = getChecksum(file);
 
-        // Convert Image to Base64
-        String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(productImage));
+            Path cPath = getChecksumPath(file);
 
-        // Create JSON request body
-        String requestBody = """
-        {
-          "image": {
-            "attachment": "%s"
-          }
+            Files.writeString(cPath,  checksum);
+
+            logger.debug("generated checksum for {} ", file);
+
+        } catch (IOException | NoSuchAlgorithmException e) {
+            logger.error("Unable to generate checksum for {} ", file);
         }
-        """.formatted(base64Image);
+    }
 
-        // Build HTTP request
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(baseUrl + "/products/" + productId + "/images.json"))
-                .header("X-Shopify-Access-Token", System.getenv("SHOPIFY_ACCESS_TOKEN"))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                .build();
+    private Path getChecksumPath(final File file) {
+        return new File(exportPath.toFile(), file.getName() + ".ck").toPath();
+    }
 
-        // Send request and get response
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+    private boolean isModified(final File file) {
+        Path cPath = getChecksumPath(file);
+        boolean isModified = !cPath.toFile().exists();
+
+        if (!isModified) {
+            try {
+                isModified = !Files.readString(cPath).equals(getChecksum(file));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            } catch (NoSuchAlgorithmException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+
+        return isModified;
+    }
+
+    private String getChecksum(final File file) throws IOException, NoSuchAlgorithmException {
+        Path path = file.toPath();
+        byte[] fileBytes = Files.readAllBytes(path);
+
+        // Generate checksum
+        String checksumAlgorithm = "SHA-256";
+        MessageDigest digest = MessageDigest.getInstance(checksumAlgorithm);
+        byte[] checksumBytes = digest.digest(fileBytes);
+        String checksum = file.lastModified() + "$" + bytesToHex(checksumBytes);
+        return checksum;
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            hexString.append(String.format("%02x", b));
+        }
+        return hexString.toString();
     }
 
 }

@@ -2,6 +2,7 @@ package ca.dollareh.pim.source;
 
 import ca.dollareh.pim.model.Product;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
@@ -14,6 +15,9 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -24,6 +28,7 @@ import java.util.stream.Collectors;
 public abstract class ProductSource {
 
     public static final String COLLECTION_SEPARATOR = "-";
+    private static final int CACHE_DURATION = 12;
 
     final Logger logger = LoggerFactory.getLogger(ProductSource.class);
 
@@ -60,61 +65,87 @@ public abstract class ProductSource {
 
         File[] transformedFiles = transformPath.toFile().listFiles(pathname -> pathname.getName().endsWith(".json"));
 
-        Arrays.stream(transformedFiles)
-                .parallel()
-                .forEach(transformedJsonFile -> {
-                    String productCode = transformedJsonFile.getName().replaceAll(".json","");
-                    try {
-                        List<File> originalJsonFiles = findOriginalProductJson(productCode);
+        if(transformedFiles != null) {
+            Arrays.stream(transformedFiles)
+                    .parallel()
+                    .forEach(transformedJsonFile -> {
+                        String productCode = transformedJsonFile.getName().replaceAll(".json","");
+                        try {
+                            List<File> originalJsonFiles = findOriginalProductJson(productCode);
 
-                        if (!originalJsonFiles.isEmpty()) {
+                            if (!originalJsonFiles.isEmpty()) {
 
-                            File originalJsonFile = originalJsonFiles.get(0);
+                                File originalJsonFile = originalJsonFiles.get(0);
 
-                            Product originalProduct = objectMapper
-                                    .readValue(originalJsonFile, Product.class);
+                                Product originalProduct = objectMapper
+                                        .readValue(originalJsonFile, Product.class);
 
-                            File enrichedProductCollectionsFile = new File(enrichmentPath.toFile(),
-                                    originalProduct.code() + ".csv");
+                                File enrichedProductCollectionsFile = new File(enrichmentPath.toFile(),
+                                        originalProduct.code() + ".csv");
 
-                            enrichedProductCollectionsFile.getParentFile().mkdirs();
+                                enrichedProductCollectionsFile.getParentFile().mkdirs();
 
-                            Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
-                                    file.getName()
-                                            .replaceFirst((originalProduct.code()+ COLLECTION_SEPARATOR),"")
-                                            .replaceFirst(".json","").toLowerCase()
+                                Files.writeString(enrichedProductCollectionsFile.toPath(), originalJsonFiles.stream().map(file ->
+                                        file.getName()
+                                                .replaceFirst((originalProduct.code()+ COLLECTION_SEPARATOR),"")
+                                                .replaceFirst(".json","").toLowerCase()
 
-                            ).collect(Collectors.joining("\n")));
+                                ).collect(Collectors.joining("\n")));
 
-                            Product transformProduct = objectMapper
-                                    .readValue(transformedJsonFile, Product.class);
+                                Product transformProduct = objectMapper
+                                        .readValue(transformedJsonFile, Product.class);
 
-                            Product enrichedProduct = originalProduct.merge(transformProduct);
+                                Product enrichedProduct = originalProduct.merge(transformProduct);
 
-                            Set<ConstraintViolation<Product>> violations = validator.validate(enrichedProduct);
+                                Set<ConstraintViolation<Product>> violations = validator.validate(enrichedProduct);
 
-                            if(violations.isEmpty()) {
-                                File enrichedProductFile = new File(enrichmentPath.toFile(),
-                                        originalProduct.code() + ".json");
+                                if(violations.isEmpty()) {
 
-                                enrichedProductFile.getParentFile().mkdirs();
+                                    File enrichedProductFile = new File(enrichmentPath.toFile(),
+                                            originalProduct.code() + ".json");
 
-                                downloadAssets(enrichedProduct);
+                                    String enrichedProductJson = objectMapper.writeValueAsString(enrichedProduct);
 
-                                Files.writeString(enrichedProductFile.toPath(), objectMapper.writeValueAsString(enrichedProduct));
-                            }
-                            else {
-                                for (ConstraintViolation<Product> violation : violations) {
-                                    throw new IllegalArgumentException(productCode + " : " + violation.getMessage());
+                                    if(enrichedProductFile.exists()) {
+                                        JsonNode existingProduct = objectMapper.readTree(enrichedProductFile);
+                                        JsonNode newProduct = objectMapper.readTree(enrichedProductJson);
+
+                                        if (!existingProduct.equals(newProduct)) {
+                                            Files.writeString(enrichedProductFile.toPath(), enrichedProductJson);
+                                            logger.info("Product(MODIFIED) {} enriched at {}", enrichedProduct.code(), enrichedProductFile);
+                                        } else {
+                                            // logger.debug("Product(UNMODIFIED) {} not enriched at {}", enrichedProduct.code(), enrichedProductFile);
+                                        }
+
+                                    } else {
+                                        downloadAssets(enrichedProduct);
+                                        Files.writeString(enrichedProductFile.toPath(), enrichedProductJson);
+                                        logger.info("Product(NEW) {} enriched at {}", enrichedProduct.code(), enrichedProductFile);
+                                    }
+
+
+
+
+
+
+
                                 }
+                                else {
+                                    for (ConstraintViolation<Product> violation : violations) {
+                                        throw new IllegalArgumentException(productCode + " : " + violation.getMessage());
+                                    }
+                                }
+                            } else {
+                                logger.error("{} does not contain product {}",
+                                        this.getClass().getSimpleName(), productCode);
                             }
-                        } else {
-                            logger.info(this.getClass().getSimpleName() + " does not contain product " + productCode);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
                         }
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                });
+                    });
+        }
+
+
     }
 
     protected abstract void login() throws IOException;
@@ -123,11 +154,22 @@ public abstract class ProductSource {
 
     protected abstract void browse() throws IOException, URISyntaxException;
 
-    protected abstract File downloadAsset(final String assetUrl) throws IOException;
+    protected abstract void downloadAsset(final File imageFile,final String assetUrl) throws IOException;
 
-    protected void downloadAssets(final Product product) throws IOException {
-        for (String imageUrl: product.imageUrls()) {
-            downloadAsset(imageUrl);
+    protected void downloadAssets(final Product product) {
+        if(product.imageUrls() != null) {
+            Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
+                File imageFile = getAssetFile(imageUrl);
+                if(!imageFile.exists()) {
+                    logger.info("Downloading image {} for {}",imageUrl, product.code());
+                    try {
+                        downloadAsset(imageFile, imageUrl);
+                    } catch (IOException e) {
+                        logger.error("Unable to download image {}",imageUrl);
+                    }
+                }
+
+            });
         }
     }
 
@@ -185,9 +227,28 @@ public abstract class ProductSource {
 
     public void extraxt() throws IOException, URISyntaxException {
         login();
-        this.browse();
+
+        if (isRecentyModified()) {
+            logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
+        } else {
+            this.browse();
+        }
+
         this.enrich();
         logout();
+    }
+
+    private boolean isRecentyModified() {
+        boolean isRecentyModified;
+        try {
+            FileTime lastModifiedTime = Files.getLastModifiedTime(path);
+            Instant lastModifiedInstant = lastModifiedTime.toInstant();
+            Instant twelveHoursAgo = Instant.now().minus(CACHE_DURATION, ChronoUnit.HOURS);
+            isRecentyModified = lastModifiedInstant.isAfter(twelveHoursAgo);
+        } catch (IOException e) {
+            isRecentyModified = false;
+        }
+        return isRecentyModified;
     }
 
     // Builder class
