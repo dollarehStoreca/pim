@@ -155,8 +155,10 @@ public abstract class ProductSource {
                 if(!imageFile.exists()) {
                     logger.info("Downloading image {} for {}",imageUrl, product.code());
                     try {
+                        imageFile.getParentFile().mkdirs();
                         downloadAsset(imageFile, imageUrl);
                     } catch (IOException e) {
+                        e.printStackTrace();
                         logger.error("Unable to download image {}",imageUrl);
                     }
                 }

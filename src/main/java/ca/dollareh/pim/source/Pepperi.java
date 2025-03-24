@@ -5,9 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -114,7 +118,10 @@ public class Pepperi extends ProductSource {
             else if(fieldNode.get( "ApiName").asText().equals("TSAPPMDiscountUnitPriceAfter1")) {
                 price = fieldNode.get("Value").floatValue();
             } else if(fieldNode.get( "ApiName").asText().equals("ItemImages")) {
-                images = List.of(fieldNode.get("Value").asText());
+                String imageUrl = fieldNode.get("Value").asText();
+                imageUrl = imageUrl.substring(imageUrl.indexOf(".com") + 4);
+                imageUrl = imageUrl.substring(0, imageUrl.indexOf("?"));
+                images = List.of(imageUrl);
             }
             else if(fieldNode.get( "ApiName").asText().equals("ItemMainCategory")) {
                 categories.add(fieldNode.get("Value").asText());
@@ -170,6 +177,21 @@ public class Pepperi extends ProductSource {
 
     @Override
     protected void downloadAsset(File imageFile, String assetUrl) throws IOException {
+
+            URL url = new URL("https://cdn.pepperi.com" + assetUrl);
+            InputStream inputStream = url.openStream();
+            OutputStream outputStream = new FileOutputStream(imageFile);
+            byte[] buffer = new byte[2048];
+
+            int length = 0;
+
+            while ((length = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, length);
+            }
+
+            inputStream.close();
+            outputStream.close();
+
 
     }
 }
