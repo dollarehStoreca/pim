@@ -3,6 +3,8 @@ package ca.dollareh.pim.source;
 import ca.dollareh.pim.model.Product;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -20,6 +22,8 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public class Pepperi extends ProductSource {
+
+    final Logger logger = LoggerFactory.getLogger(Pepperi.class);
 
     public static final String BASE_URL = "https://webapi.pepperi.com/17.41.3/webapi/Service1.svc/v1";
     private final HttpClient client ;
@@ -52,11 +56,19 @@ public class Pepperi extends ProductSource {
     @Override
     protected void browse() throws IOException, URISyntaxException {
         try {
-            List<String> strings = getProducts();
+            List<String> products = getProducts();
 
-            getProduct(strings.get(0));
+            products.stream().parallel().forEach(uuid -> {
+                try {
+                    getProduct(uuid);
+                } catch (IOException | InterruptedException e) {
+                    logger.error("Unable to get Product", e);
+                }
+            });
 
-            // System.out.println(strings);
+
+
+            // System.out.println(products);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -70,15 +82,15 @@ public class Pepperi extends ProductSource {
 
         List<String> strings = getProductKeys(rowNodes);
 
-//        int totalProducts = productNode.get("TotalRows").asInt();
-//
-//        productNode = getProdutNode("/OrderCenter/Transaction/" +transactionId+"/Items/1/"+totalProducts);
-//
-//        rowNodes = (ArrayNode) productNode.get("Rows");
-//
-//        strings.addAll(getProductKeys(rowNodes));
-//
-//        System.out.println(totalProducts);
+        int totalProducts = productNode.get("TotalRows").asInt();
+
+        productNode = getProdutNode("/OrderCenter/Transaction/" +transactionId+"/Items/1/"+totalProducts);
+
+        rowNodes = (ArrayNode) productNode.get("Rows");
+
+        strings.addAll(getProductKeys(rowNodes));
+
+        System.out.println(totalProducts);
 
         return strings;
 
@@ -119,8 +131,13 @@ public class Pepperi extends ProductSource {
                 price = fieldNode.get("Value").floatValue();
             } else if(fieldNode.get( "ApiName").asText().equals("ItemImages")) {
                 String imageUrl = fieldNode.get("Value").asText();
-                imageUrl = imageUrl.substring(imageUrl.indexOf(".com") + 4);
-                imageUrl = imageUrl.substring(0, imageUrl.indexOf("?"));
+                if(imageUrl.contains(".com")) {
+                    imageUrl = imageUrl.substring(imageUrl.indexOf(".com") + 4);
+                }
+
+                if(imageUrl.contains("?")) {
+                    imageUrl = imageUrl.substring(0, imageUrl.indexOf("?"));
+                }
                 images = List.of(imageUrl);
             }
             else if(fieldNode.get( "ApiName").asText().equals("ItemMainCategory")) {
