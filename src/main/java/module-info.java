@@ -10,6 +10,8 @@ module my.module {
     requires jakarta.validation;
     requires org.apache.poi.ooxml;
     requires org.apache.commons.io;
+    requires org.apache.pdfbox;
+    requires tabula;
 
     exports ca.dollareh.pim.model;
     opens ca.dollareh.pim.model;

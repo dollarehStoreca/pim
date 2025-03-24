@@ -13,12 +13,6 @@ class MultiCraftTest {
     void testMultiCraft() throws IOException, URISyntaxException {
         ProductSource productSource = ProductSource
                 .from(MultiCraft.class)
-                .onNew(newProduct -> {
-                    logger.info("New Product Found " + newProduct);
-                })
-                .onModified(updatedProduct -> {
-                    logger.info("Product Modified " + updatedProduct);
-                })
                 .build();
         productSource.extraxt();
     }
