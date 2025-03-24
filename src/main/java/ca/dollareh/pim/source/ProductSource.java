@@ -43,7 +43,7 @@ public abstract class ProductSource {
     final Consumer<Product> newProductConsumer;
     final Consumer<Product> modifiedProductConsumer;
 
-    private final ObjectMapper objectMapper;
+    protected final ObjectMapper objectMapper;
 
     protected ProductSource(final Consumer<Product> newProductConsumer,
                             final Consumer<Product> modifiedProductConsumer) {
@@ -123,12 +123,6 @@ public abstract class ProductSource {
                                         logger.info("Product(NEW) {} enriched at {}", enrichedProduct.code(), enrichedProductFile);
                                     }
 
-
-
-
-
-
-
                                 }
                                 else {
                                     for (ConstraintViolation<Product> violation : violations) {
@@ -144,8 +138,6 @@ public abstract class ProductSource {
                         }
                     });
         }
-
-
     }
 
     protected abstract void login() throws IOException;
