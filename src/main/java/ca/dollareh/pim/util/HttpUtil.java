@@ -10,7 +10,9 @@ public class HttpUtil {
         return new URIBuilder(url)
                 .getQueryParams()
                 .stream()
-                .filter(nameValuePair -> nameValuePair.getName().equals("code"))
+                .filter(nameValuePair ->{
+                    return nameValuePair.getName().equals(param);
+                })
                 .findFirst()
                 .map(NameValuePair::getValue)
                 .orElse(null);

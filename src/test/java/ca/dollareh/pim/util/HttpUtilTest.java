@@ -13,9 +13,9 @@ class HttpUtilTest {
     @Test
     void getRequestParameter() throws URISyntaxException {
 
-        String categpry = HttpUtil.getRequestParameter("/shop/?MainCategory=Home%20Decor&orderBy=Featured,Id&context=shop&page=1","Category");
+        String categpry = HttpUtil.getRequestParameter("/shop/?MainCategory=Home%20Decor&orderBy=Featured,Id&context=shop&page=1","MainCategory");
 
-        Assertions.assertEquals("Personal%20Care", categpry);
+        Assertions.assertEquals("Home Decor", categpry);
 
     }
 }
