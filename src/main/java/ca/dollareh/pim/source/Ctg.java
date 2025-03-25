@@ -1,19 +1,22 @@
 package ca.dollareh.pim.source;
 
 import ca.dollareh.pim.model.Product;
+import ca.dollareh.pim.util.HttpUtil;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class Ctg extends ProductSource{
 
-    public static final String BASE_URL = "https://multicraft.ca";
+    public static final String BASE_URL = "https://www.ctgbrands.com";
 
     private final Connection session;
 
@@ -37,8 +40,48 @@ public class Ctg extends ProductSource{
 
     @Override
     protected void browse() throws IOException, URISyntaxException {
+        browse("/everyday");
+        browse("/seasonal");
+        browse("/home-décor");
+    }
+
+    private void browse(String url) throws IOException, URISyntaxException {
+
+        Document categoryListingDocument = getHTMLDocument(url);
+
+        Elements categoryElements = categoryListingDocument.select("div.usn-sc-container>div.row>div.col-vh>div>div>div>div>a");
+
+        categoryElements.stream().parallel().forEach(anchorEl -> {
+            String browseUrl = anchorEl.attr("href");
+
+            try {
+                String category = HttpUtil.getRequestParameter(browseUrl, "Category");
+                String mainCategory = HttpUtil.getRequestParameter(browseUrl, "MainCategory");
+
+                List<String> categories = List.of(mainCategory, category);
+
+                browseProducts(categories, browseUrl);
+
+
+
+            } catch (URISyntaxException e) {
+                throw new RuntimeException(e);
+            }
+
+
+
+
+        });
+
+
 
     }
+
+    private void browseProducts(List<String> categories, String browseUrl) {
+
+    }
+
+
 
     @Override
     protected void downloadAsset(File imageFile, String assetUrl) throws IOException {
