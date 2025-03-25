@@ -41,8 +41,8 @@ public class Ctg extends ProductSource{
     @Override
     protected void browse() throws IOException, URISyntaxException {
         browse("/everyday");
-        browse("/seasonal");
-        browse("/home-décor");
+//        browse("/seasonal");
+//        browse("/home-décor");
     }
 
     private void browse(String url) throws IOException, URISyntaxException {
@@ -51,13 +51,18 @@ public class Ctg extends ProductSource{
 
         Elements categoryElements = categoryListingDocument.select("div.usn-sc-container>div.row>div.col-vh>div>div>div>div>a");
 
-        categoryElements.stream().parallel().forEach(anchorEl -> {
+        categoryElements.stream().forEach(anchorEl -> {
             String browseUrl = anchorEl.attr("href");
 
             try {
                 String category = HttpUtil.getRequestParameter(browseUrl, "Category");
                 String mainCategory = HttpUtil.getRequestParameter(browseUrl, "MainCategory");
 
+                System.out.println(browseUrl);
+
+                if(mainCategory == null || category == null) {
+                    System.out.println("D");
+                }
                 List<String> categories = List.of(mainCategory, category);
 
                 browseProducts(categories, browseUrl);
@@ -66,6 +71,8 @@ public class Ctg extends ProductSource{
 
             } catch (URISyntaxException e) {
                 throw new RuntimeException(e);
+            } catch (NullPointerException np) {
+                System.out.println(np);
             }
 
 
@@ -78,7 +85,8 @@ public class Ctg extends ProductSource{
     }
 
     private void browseProducts(List<String> categories, String browseUrl) {
-
+        System.out.println(categories);
+        System.out.println(browseUrl);
     }
 
 
