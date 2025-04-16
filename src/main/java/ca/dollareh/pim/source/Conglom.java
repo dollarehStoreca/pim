@@ -67,7 +67,6 @@ public class Conglom extends ProductSource{
             if(code.isEmpty()) {
                 break;
             }
-            System.out.println(code);
 
             Float price = priceMap.get(code);
 
@@ -75,12 +74,16 @@ public class Conglom extends ProductSource{
 
                 String imageURL = row.getCell(4).getStringCellValue().trim().replace(URL, "");
 
+                // Find Actual Images
+                String imageURLIP = imageURL.replaceFirst("_CASE", "_IP");
+                String imageURLSP = imageURLIP.replaceFirst("_IP", "_SP");
+
                 Product product =new Product(code,
                         row.getCell(1).getStringCellValue().trim(),
                         row.getCell(1).getStringCellValue().trim(),null, null,
                         price, price, null,
-                        List.of(imageURL.replaceFirst("_CASE", "_IP"),
-                                imageURL.replaceFirst("_CASE", "_SP")).toArray(new String[0]));
+                        List.of(imageURLIP,
+                                imageURLSP).toArray(new String[0]));
                 onProductDiscovery(List.of(row.getCell(2).getStringCellValue().trim()),product);
             }
 
