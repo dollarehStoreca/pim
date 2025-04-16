@@ -7,8 +7,6 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.URISyntaxException;
 
-import static org.junit.jupiter.api.Assertions.*;
-
 class ConglomTest {
     final Logger logger = LoggerFactory.getLogger(ConglomTest.class);
     @Test

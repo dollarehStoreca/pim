@@ -1,5 +1,6 @@
 package ca.dollareh.pim;
 
+import ca.dollareh.pim.source.Conglom;
 import ca.dollareh.pim.source.Pepperi;
 import ca.dollareh.pim.source.ProductSource;
 import org.junit.jupiter.api.Test;
@@ -8,12 +9,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
-public class PrepareTransformTest {
+class PrepareTransformTest {
 
     @Test
     void testPrepare() throws IOException {
 
-        final Class<? extends ProductSource> productSourceClass = Pepperi.class;
+        final Class<? extends ProductSource> productSourceClass = Conglom.class;
 
         File extractedFolder = new File("workspace/extracted/" + productSourceClass.getSimpleName());
         File transformFolder = new File("workspace/transform/" + productSourceClass.getSimpleName());
@@ -28,8 +29,8 @@ public class PrepareTransformTest {
             String fileName = jsonFile.getName();
 
             fileName = fileName.substring(0, fileName.lastIndexOf("-"));
-            fileName = fileName.substring(0, fileName.lastIndexOf("-"));
-            fileName = fileName.substring(0, fileName.lastIndexOf("-"));
+//            fileName = fileName.substring(0, fileName.lastIndexOf("-"));
+//            fileName = fileName.substring(0, fileName.lastIndexOf("-"));
 
             File newJsonFile = new File(transformFolder, fileName + ".json");
 
