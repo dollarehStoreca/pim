@@ -87,7 +87,7 @@ public class Conglom extends ProductSource{
                         row.getCell(1).getStringCellValue().trim(),
                         row.getCell(1).getStringCellValue().trim(),null, null,
                         price, price, null,
-                        imageUrlsByItem.get(code).toArray(new String[0]));
+                        imageUrlsByItem.get(code) == null ? new String[0] : imageUrlsByItem.get(code).toArray(new String[0]));
 //                        List.of(imageURLIP,
 //                                imageURLSP).toArray(new String[0]));
                 onProductDiscovery(List.of(row.getCell(2).getStringCellValue().trim()),product);
@@ -174,6 +174,13 @@ public class Conglom extends ProductSource{
                                 imageUrl = table.getCell(rowNumber, 5).getText().trim().replaceAll(" ", "");
                             }
                             if(!StringUtil.isBlank(imageUrl) && imageUrl.startsWith("https") && !imageUrl.contains("_CASE")){
+                                if(imageUrl.contains(".com")) {
+                                    imageUrl = imageUrl.substring(imageUrl.indexOf(".com") + 4);
+                                }
+
+                                if(imageUrl.contains("?")) {
+                                    imageUrl = imageUrl.substring(0, imageUrl.indexOf("?"));
+                                }
                                 imageUrlMap.computeIfAbsent(code, k -> new ArrayList<>()).add(imageUrl);
                             }
                         }

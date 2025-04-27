@@ -10,7 +10,7 @@ import java.net.URISyntaxException;
 class ConglomTest {
     final Logger logger = LoggerFactory.getLogger(ConglomTest.class);
     @Test
-    void testMultiCraft() throws IOException, URISyntaxException {
+    void testConglom() throws IOException, URISyntaxException {
         ProductSource productSource = ProductSource
                 .from(Conglom.class)
                 .build();
