@@ -13,6 +13,9 @@ import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -60,17 +63,18 @@ public class Pepperi extends ProductSource {
 
 
     private void getProductsCSV() throws IOException, InterruptedException {
-        HttpRequest request = getPepperiRequest("/OrderCenter/Transaction/" + transactionId + "/ExportToCsv")
-                .POST(HttpRequest.BodyPublishers.ofString("{\"ViewType\":\"OrderCenterGrid\",\"OrderBy\":\"\",\"Ascending\":true,\"SearchText\":\"\"}"))
-                .build();
+//        HttpRequest request = getPepperiRequest("/OrderCenter/Transaction/" + transactionId + "/ExportToCsv")
+//                .POST(HttpRequest.BodyPublishers.ofString("{\"ViewType\":\"OrderCenterGrid\",\"OrderBy\":\"\",\"Ascending\":true,\"SearchText\":\"\"}"))
+//                .build();
+//
+//        HttpResponse<InputStream> response = null;
+//
+//        response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
-        HttpResponse<InputStream> response = null;
+        Path csvPath = Paths.get("F:\\dollareh\\pim\\sample\\Pepperi.csv");
 
-        response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
-
-
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(response.body()))) {
-            String line = reader.readLine();
+        try (BufferedReader reader = Files.newBufferedReader(csvPath)) {
+           String line = reader.readLine();
             while ((line = reader.readLine()) != null) {
                 String[] data = line.split(",");
 
@@ -101,7 +105,7 @@ public class Pepperi extends ProductSource {
         if (jsonNode.get("Rows") != null) {
             ArrayNode nodes = (ArrayNode) jsonNode.get("Rows");
             try {
-                getProduct(nodes.get(0).get("UID").asText());
+                getProduct(nodes.get(0).get("UID").asText(), sku);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -109,7 +113,7 @@ public class Pepperi extends ProductSource {
     }
 
 
-    private void getProduct(String uuid) throws IOException, InterruptedException {
+    private void getProduct(String uuid,String sku) throws IOException, InterruptedException {
         HttpRequest request = getPepperiRequest("/OrderCenter/Transaction/" + transactionId + "/TransactionLine/" + uuid + "/Details")
                 .GET()
                 .build();
@@ -138,7 +142,9 @@ public class Pepperi extends ProductSource {
             } else if (fieldNode.get("ApiName").asText().equals("ItemCaseQuantity")) {
                 quantity = fieldNode.get("Value").asInt();
             } else if (fieldNode.get("ApiName").asText().equals("TSAPPMDiscountUnitPriceAfter1")) {
-                price = fieldNode.get("Value").floatValue();
+                String value = String.valueOf(fieldNode.get("Value"));
+                String newValue = value.replaceAll("^\"|\"$", "");
+                price = Float.parseFloat(newValue);
             } else if (fieldNode.get("ApiName").asText().equals("ItemImages")) {
                 String imageUrl = fieldNode.get("Value").asText();
                 if (imageUrl.contains(".com")) {
@@ -158,7 +164,7 @@ public class Pepperi extends ProductSource {
             }
         }
 
-        Product product = new Product(uuid, title, title, upc, quantity, price, price, 0f, images.toArray(new String[0]));
+        Product product = new Product(sku, title, title, upc, quantity, price, price, 0f, images.toArray(new String[0]));
 
         onProductDiscovery(categories, product);
 

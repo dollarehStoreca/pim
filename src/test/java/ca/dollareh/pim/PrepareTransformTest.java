@@ -16,7 +16,7 @@ class PrepareTransformTest {
     @Test
     void testPrepare() throws IOException {
 
-        final Class<? extends ProductSource> productSourceClass = Conglom.class;
+        final Class<? extends ProductSource> productSourceClass = Pepperi.class;
 
         File extractedFolder = new File("workspace/extracted/" + productSourceClass.getSimpleName());
         File transformFolder = new File("workspace/transform/" + productSourceClass.getSimpleName());

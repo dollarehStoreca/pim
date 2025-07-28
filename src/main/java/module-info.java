@@ -15,4 +15,6 @@ module my.module {
 
     exports ca.dollareh.pim.model;
     opens ca.dollareh.pim.model;
+
+    requires io.github.cdimascio.dotenv.java;
 }

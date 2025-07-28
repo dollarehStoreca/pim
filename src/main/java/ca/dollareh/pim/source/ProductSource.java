@@ -170,7 +170,13 @@ public abstract class ProductSource {
     protected void onProductDiscovery(final List<String> categories,
                                       final Product product) throws IOException {
 
+//        String category = categories.isEmpty() ? "" : categories.stream()
+//                .collect(Collectors.joining(COLLECTION_SEPARATOR));
+//        System.out.println(categories);
+
+
         String category = categories.isEmpty() ? "" : categories.stream()
+                .map(c -> c.replaceAll("[\\\\/:*?\"<>|]", "_")) // replace invalid path chars
                 .collect(Collectors.joining(COLLECTION_SEPARATOR));
 
         Path productJsonPath = new File(path.toFile(), product.code() + COLLECTION_SEPARATOR + category + ".json").toPath();
@@ -222,11 +228,11 @@ public abstract class ProductSource {
     public void extraxt() throws IOException, URISyntaxException {
         login();
 
-        if (isRecentyModified()) {
-            logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
-        } else {
-            this.browse();
-        }
+//        if (isRecentyModified()) {
+//            logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
+//        } else {
+//            this.browse();
+//        }
 
         this.enrich();
         logout();

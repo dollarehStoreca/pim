@@ -66,6 +66,7 @@ public class Shopify {
         exportPath = Path.of("workspace/export/" + getClass().getSimpleName() + "/" + productSource.getClass().getSimpleName());
         enrichmentPath = Path.of("workspace/enrichment/" + productSource.getClass().getSimpleName());
 
+
         exportPath.toFile().mkdirs();
 
         File collectionMappingsFile = new File(exportPath.toFile().getParentFile(), "collection.properties");
@@ -114,7 +115,7 @@ public class Shopify {
     public void export() throws IOException, InterruptedException {
 
         File[] enrichedJsonFiles = enrichmentPath.toFile()
-                .listFiles((dir, name) -> name.startsWith("BD303B") && name.endsWith(".json"));
+                .listFiles((dir, name) -> name.endsWith(".json"));
 
         if (enrichedJsonFiles != null) {
             for (File enrichedJsonFile : enrichedJsonFiles) {
@@ -215,7 +216,7 @@ public class Shopify {
                 "body_html", product.description(),
                 "handle", product.code(),
                 "vendor", "Dollareh",
-                "tags", "auto-imported",
+                "tags", "auto-imported-new",
                 "variants", List.of(variantMap));
 
         return objectMapper.writeValueAsString(Map.of("product", productMap));
@@ -244,30 +245,31 @@ public class Shopify {
 
             for (String imageUrl : product.imageUrls()) {
                 File imageFile = productSource.getAssetFile(imageUrl);
+                if(imageFile.exists()) {
 
-                // Convert Image to Base64
-                String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(imageFile.toPath()));
+                    // Convert Image to Base64
+                    String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(imageFile.toPath()));
 
-                // Create JSON request body
-                String requestBody = """
-                        {
-                          "image": {
-                            "attachment": "%s"
-                          }
-                        }
-                        """.formatted(base64Image);
+                    // Create JSON request body
+                    String requestBody = """
+                            {
+                              "image": {
+                                "attachment": "%s"
+                              }
+                            }
+                            """.formatted(base64Image);
 
-                HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build();
+                    HttpRequest request = requestBuilder.POST(HttpRequest.BodyPublishers.ofString(requestBody)).build();
 
-                // Send request and get response
-                HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+                    // Send request and get response
+                    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
-                if (response.statusCode() == SC_OK) {
-                    logger.info("Image {} upload for product {}", imageUrl, product.code());
-                } else {
-                    logger.error("Image {} not upload for product {}", imageUrl, product.code());
+                    if (response.statusCode() == SC_OK) {
+                        logger.info("Image {} upload for product {}", imageUrl, product.code());
+                    } else {
+                        logger.error("Image {} not upload for product {}", imageUrl, product.code());
+                    }
                 }
-
             }
         }
     }
