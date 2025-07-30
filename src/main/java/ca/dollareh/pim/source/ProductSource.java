@@ -228,11 +228,11 @@ public abstract class ProductSource {
     public void extraxt() throws IOException, URISyntaxException {
         login();
 
-//        if (isRecentyModified()) {
-//            logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
-//        } else {
-//            this.browse();
-//        }
+        if (isRecentyModified()) {
+            logger.info("Skipping Browse as the folder was recently updated in {} hours.", CACHE_DURATION);
+        } else {
+            this.browse();
+        }
 
         this.enrich();
         logout();

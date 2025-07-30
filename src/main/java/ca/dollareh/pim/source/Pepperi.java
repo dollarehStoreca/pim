@@ -71,7 +71,8 @@ public class Pepperi extends ProductSource {
 //
 //        response = client.send(request, HttpResponse.BodyHandlers.ofInputStream());
 
-        Path csvPath = Paths.get("F:\\dollareh\\pim\\sample\\Pepperi.csv");
+        Path csvPath = Paths.get("sample", "Pepperi.csv");
+        System.out.println(csvPath);
 
         try (BufferedReader reader = Files.newBufferedReader(csvPath)) {
            String line = reader.readLine();
@@ -164,7 +165,7 @@ public class Pepperi extends ProductSource {
             }
         }
 
-        Product product = new Product(sku, title, title, upc, quantity, price, price, 0f, images.toArray(new String[0]));
+        Product product = new Product("UNQ-"+sku, title, title, upc, quantity, price, price, 0f, images.toArray(new String[0]));
 
         onProductDiscovery(categories, product);
 

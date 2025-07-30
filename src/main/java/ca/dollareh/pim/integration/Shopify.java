@@ -216,7 +216,7 @@ public class Shopify {
                 "body_html", product.description(),
                 "handle", product.code(),
                 "vendor", "Dollareh",
-                "tags", "auto-imported-new",
+                "tags", "auto-imported-unique",
                 "variants", List.of(variantMap));
 
         return objectMapper.writeValueAsString(Map.of("product", productMap));
@@ -239,13 +239,18 @@ public class Shopify {
     }
 
     public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
+
         try (HttpClient client = HttpClient.newHttpClient()) {
             // Build HTTP request
             HttpRequest.Builder requestBuilder = getShopifyRequestBuilder("/products/" + productId + "/images.json");
 
             for (String imageUrl : product.imageUrls()) {
-                File imageFile = productSource.getAssetFile(imageUrl);
+                File imageFile = imageUrl.trim().isEmpty() ?
+                        new File("sample/no-image.png")
+                        : productSource.getAssetFile(imageUrl);
                 if(imageFile.exists()) {
+
+                    logger.info("Creating Image {} for Product {}", imageFile, productId );
 
                     // Convert Image to Base64
                     String base64Image = Base64.getEncoder().encodeToString(Files.readAllBytes(imageFile.toPath()));
