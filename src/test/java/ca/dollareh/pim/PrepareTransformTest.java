@@ -3,6 +3,7 @@ package ca.dollareh.pim;
 import ca.dollareh.pim.source.Conglom;
 import ca.dollareh.pim.source.Pepperi;
 import ca.dollareh.pim.source.ProductSource;
+import ca.dollareh.pim.source.Symaksales;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,7 @@ class PrepareTransformTest {
     @Test
     void testPrepare() throws IOException {
 
-        final Class<? extends ProductSource> productSourceClass = Pepperi.class;
+        final Class<? extends ProductSource> productSourceClass = Symaksales.class;
 
         File extractedFolder = new File("workspace/extracted/" + productSourceClass.getSimpleName());
         File transformFolder = new File("workspace/transform/" + productSourceClass.getSimpleName());
