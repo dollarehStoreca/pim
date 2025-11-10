@@ -139,7 +139,7 @@ public class Shopify {
         }
     }
 
-    private boolean create(final Product product) throws IOException, InterruptedException {
+    public boolean create(final Product product) throws IOException, InterruptedException {
         boolean created = false;
         try (HttpClient client = HttpClient.newHttpClient()) {
 
