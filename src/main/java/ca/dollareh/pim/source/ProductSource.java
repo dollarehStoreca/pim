@@ -148,7 +148,7 @@ public abstract class ProductSource {
 
     protected abstract void downloadAsset(final File imageFile,final String assetUrl) throws IOException;
 
-    protected void downloadAssets(final Product product) {
+    public void downloadAssets(final Product product) {
         if(product.imageUrls() != null) {
             Arrays.stream(product.imageUrls()).parallel().forEach(imageUrl -> {
                 File imageFile = getAssetFile(imageUrl);

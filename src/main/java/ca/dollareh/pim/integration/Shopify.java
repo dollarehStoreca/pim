@@ -50,7 +50,7 @@ public class Shopify {
     private final Path enrichmentPath;
 
     private final ProductSource productSource;
-    private final Long defaultCollectionId;
+    private  Long defaultCollectionId;
 
     private final ObjectMapper objectMapper;
 
@@ -69,47 +69,47 @@ public class Shopify {
 
         exportPath.toFile().mkdirs();
 
-        File collectionMappingsFile = new File(exportPath.toFile().getParentFile(), "collection.properties");
+ //       File collectionMappingsFile = new File(exportPath.toFile().getParentFile(), "collection.properties");
 
-        if (collectionMappingsFile.exists()) {
-            Properties cProperties = new Properties();
-            try(FileReader fileReader = new FileReader(collectionMappingsFile)) {
-                cProperties.load(fileReader);
-            } catch (IOException e) {
-                logger.error("Collection Mapping Properties does not exists {}", collectionMappingsFile);
-            }
-            String cIdStr = (String) cProperties.get(productSource.getClass().getSimpleName());
-            if(cIdStr == null) {
-                Optional<Map<String, Object>> defaultCollection =  getDefaultCollection();
-                if(defaultCollection.isPresent()) {
-                    defaultCollectionId = (Long) defaultCollection.get().get("id");
-                    cProperties.put(productSource.getClass().getSimpleName(),defaultCollectionId.toString());
-                    try (FileWriter fileWriter = new FileWriter(collectionMappingsFile)){
-                        cProperties.store(fileWriter, "Updated with " + defaultCollection.get().get("title"));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }else {
-                    throw new RuntimeException("Collection Mapping not available for " + productSource.getClass().getSimpleName());
-                }
-            } else {
-                defaultCollectionId = Long.parseLong(cIdStr);
-            }
-
-        } else {
-            Optional<Map<String, Object>> defaultCollection =  getDefaultCollection();
-            if(defaultCollection.isPresent()) {
-                try {
-                    defaultCollectionId = (Long) defaultCollection.get().get("id");
-                    Files.writeString(collectionMappingsFile.toPath(),
-                            productSource.getClass().getSimpleName() + "=" + defaultCollectionId);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            } else {
-                throw new RuntimeException("Collection Mapping not available for " + productSource.getClass().getSimpleName());
-            }
-        }
+//        if (collectionMappingsFile.exists()) {
+//            Properties cProperties = new Properties();
+//            try(FileReader fileReader = new FileReader(collectionMappingsFile)) {
+//                cProperties.load(fileReader);
+//            } catch (IOException e) {
+//                logger.error("Collection Mapping Properties does not exists {}", collectionMappingsFile);
+//            }
+//            String cIdStr = (String) cProperties.get(productSource.getClass().getSimpleName());
+//            if(cIdStr == null) {
+//                Optional<Map<String, Object>> defaultCollection =  getDefaultCollection();
+//                if(defaultCollection.isPresent()) {
+//                    defaultCollectionId = (Long) defaultCollection.get().get("id");
+//                    cProperties.put(productSource.getClass().getSimpleName(),defaultCollectionId.toString());
+//                    try (FileWriter fileWriter = new FileWriter(collectionMappingsFile)){
+//                        cProperties.store(fileWriter, "Updated with " + defaultCollection.get().get("title"));
+//                    } catch (IOException e) {
+//                        throw new RuntimeException(e);
+//                    }
+//                }else {
+//                    throw new RuntimeException("Collection Mapping not available for " + productSource.getClass().getSimpleName());
+//                }
+//            } else {
+//                defaultCollectionId = Long.parseLong(cIdStr);
+//            }
+//
+//        } else {
+//            Optional<Map<String, Object>> defaultCollection =  getDefaultCollection();
+//            if(defaultCollection.isPresent()) {
+//                try {
+//                    defaultCollectionId = (Long) defaultCollection.get().get("id");
+//                    Files.writeString(collectionMappingsFile.toPath(),
+//                            productSource.getClass().getSimpleName() + "=" + defaultCollectionId);
+//                } catch (IOException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            } else {
+//                throw new RuntimeException("Collection Mapping not available for " + productSource.getClass().getSimpleName());
+//            }
+//        }
     }
 
     public void export() throws IOException, InterruptedException {
@@ -156,7 +156,7 @@ public class Shopify {
 
                 logger.info("Product {} created", productId);
 
-                associateCollection(productId, defaultCollectionId);
+                associateCollection(productId, 343839408298L);
                 createImages(productId, product);
                 setInventoryItem(productJsonFile, product);
 
@@ -200,8 +200,8 @@ public class Shopify {
     private String getShopifyProduct(final Product product) throws JsonProcessingException {
 
         Map<String, Object> variantMap = new HashMap<>();
-        variantMap.put("price", product.price());
-//        variantMap.put("compare_at_price", product.discount());
+        variantMap.put("price", product.price()*2);
+   //    variantMap.put("compare_at_price", product.());
         variantMap.put("inventory_quantity", product.inventoryQuantity());
         variantMap.put("title", "Default Title");
         variantMap.put("inventory_policy", "deny");
@@ -210,13 +210,15 @@ public class Shopify {
         variantMap.put("fulfillment_service", "manual");
         variantMap.put("taxable", true);
         variantMap.put("requires_shipping", true);
+   //     variantMap.put("cost", product.price());
         variantMap.put("sku",product.code());
+        variantMap.put("barcode",product.upc());
 
         Map<String, Object> productMap = Map.of("title", product.title(),
                 "body_html", product.description(),
                 "handle", product.code(),
                 "vendor", "Dollareh",
-                "tags", "auto-imported-unique",
+                "tags", "CTG",
                 "variants", List.of(variantMap));
 
         return objectMapper.writeValueAsString(Map.of("product", productMap));
@@ -238,6 +240,7 @@ public class Shopify {
         }
     }
 
+    // https://s3.amazonaws.com/emuncloud-staticassets/productImages/ctg080/small/16003_2.jpg
     public void createImages(final Long productId, Product product) throws IOException, InterruptedException {
 
         try (HttpClient client = HttpClient.newHttpClient()) {
@@ -301,7 +304,7 @@ public class Shopify {
                             objectMapper.writeValueAsString(
                                     Map.of("inventory_item",
                                             Map.of("id", inventoryItemId,
-                                                    "cost", product.cost())))))
+                                                    "cost", product.price())))))
                     .build();
 
             // Send request and get response
